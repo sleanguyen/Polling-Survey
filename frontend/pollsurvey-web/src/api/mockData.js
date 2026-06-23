@@ -81,7 +81,8 @@ export const mockResults = {
 // Simulate a POST /api/polls response shape
 export function createMockPoll(payload) {
   const code = Math.random().toString(36).substring(2, 7)
-  return {
+
+  const newPoll = {
     id: Date.now(),
     code,
     question: payload.question,
@@ -91,4 +92,16 @@ export function createMockPoll(payload) {
     expiresAt: payload.expiresAt || null,
     totalVotes: 0
   }
+
+ 
+  mockPolls.push(newPoll)
+  mockResults[code] = {
+    pollCode: code,
+    question: payload.question,
+    status: 'open',
+    totalVotes: 0,
+    options: payload.options.map((text, index) => ({ index, text, votes: 0 }))
+  }
+
+  return newPoll
 }
