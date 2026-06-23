@@ -19,17 +19,15 @@ const props = defineProps({
   results: { type: Object, required: true }
 })
 
-const COLORS = [
-  '#6b0e1e', '#9b1a2e', '#b84a5a', '#c97a55',
-  '#4a7a5a', '#7a4a9b', '#c9a020'
-]
-
 const chartData = computed(() => ({
   labels: props.results.options.map(o => o.text),
   datasets: [{
     label: 'Votes',
     data: props.results.options.map(o => o.votes),
-    backgroundColor: props.results.options.map((_, i) => COLORS[i % COLORS.length]),
+    backgroundColor: props.results.options.map((_, i) =>
+      i === 0 ? '#6b0e1e' : 'rgba(107,14,30,0.35)'
+    ),
+    hoverBackgroundColor: props.results.options.map(() => '#850f23'),
     borderRadius: 8,
     borderSkipped: false
   }]
@@ -38,27 +36,38 @@ const chartData = computed(() => ({
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
-  animation: {
-    duration: 600,
-    easing: 'easeOutQuart'
-  },
+  animation: { duration: 700, easing: 'easeOutQuart' },
   plugins: {
     legend: { display: false },
     tooltip: {
+      backgroundColor: '#2c0a10',
+      titleColor: '#f5de8d',
+      bodyColor: '#fcefc6',
+      padding: 10,
+      cornerRadius: 8,
       callbacks: {
-        label: ctx => ` ${ctx.raw} votes`
+        label: ctx => `  ${ctx.raw} votes`
       }
     }
   },
   scales: {
     x: {
-      ticks: { color: '#9b7c50', font: { size: 13 } },
-      grid: { display: false }
+      ticks: {
+        color: '#9b7c50',
+        font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: '500' }
+      },
+      grid: { display: false },
+      border: { color: '#dfc96a' }
     },
     y: {
       beginAtZero: true,
-      ticks: { color: '#9b7c50', precision: 0 },
-      grid: { color: '#e0c870' }
+      ticks: {
+        color: '#9b7c50',
+        precision: 0,
+        font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 }
+      },
+      grid: { color: 'rgba(107,14,30,0.08)' },
+      border: { dash: [4, 4], color: 'transparent' }
     }
   }
 }
@@ -67,7 +76,7 @@ const chartOptions = {
 <style scoped>
 .chart-wrap {
   position: relative;
-  height: 300px;
+  height: 260px;
   width: 100%;
 }
 </style>

@@ -9,7 +9,7 @@ export const mockPolls = [
     code: '7fGh2',
     question: 'What is your favourite programming language?',
     options: ['JavaScript', 'Python', 'C#', 'Go', 'Rust'],
-    status: 'open',         // 'open' | 'closed'
+    status: 'open',
     createdAt: '2025-06-01T08:00:00Z',
     expiresAt: null,
     totalVotes: 42
@@ -79,6 +79,7 @@ export const mockResults = {
 }
 
 // Simulate a POST /api/polls response shape
+// FIX: also saves into mockPolls + mockResults so getPoll/getResults can find it
 export function createMockPoll(payload) {
   const code = Math.random().toString(36).substring(2, 7)
 
@@ -93,8 +94,10 @@ export function createMockPoll(payload) {
     totalVotes: 0
   }
 
- 
+  // Save vào mockPolls để getPoll(code) tìm được
   mockPolls.push(newPoll)
+
+  // Save vào mockResults để getPollResults(code) tìm được
   mockResults[code] = {
     pollCode: code,
     question: payload.question,
