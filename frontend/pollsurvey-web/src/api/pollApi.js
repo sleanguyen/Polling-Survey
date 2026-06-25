@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { mockPolls, mockResults, createMockPoll } from './mockData.js'
 
-// Toggle this to false once the real backend is running
 const USE_MOCK = true
 
 const http = axios.create({
@@ -12,22 +11,12 @@ const http = axios.create({
 
 // ── Polls ──────────────────────────────────────
 
-/**
- * POST /api/polls
- * @param {{ question: string, options: string[], expiresAt?: string }} payload
- */
 export async function createPoll(payload) {
-  if (USE_MOCK) {
-    await delay(400)
-    return createMockPoll(payload)
-  }
+  if (USE_MOCK) { await delay(400); return createMockPoll(payload) }
   const { data } = await http.post('/polls', payload)
   return data
 }
 
-/**
- * GET /api/polls/{code}
- */
 export async function getPoll(code) {
   if (USE_MOCK) {
     await delay(300)
@@ -39,9 +28,6 @@ export async function getPoll(code) {
   return data
 }
 
-/**
- * GET /api/polls/{code}/results
- */
 export async function getPollResults(code) {
   if (USE_MOCK) {
     await delay(300)
@@ -55,17 +41,11 @@ export async function getPollResults(code) {
 
 // ── Votes ──────────────────────────────────────
 
-/**
- * POST /api/polls/{code}/vote
- * @param {string} code
- * @param {{ optionIndex: number, voterToken: string }} payload
- */
 export async function submitVote(code, payload) {
   if (USE_MOCK) {
     await delay(500)
-    // Mutate mock results so the chart updates
     const result = mockResults[code]
-    if (result) {
+    if (result && payload.optionIndex !== undefined) {
       result.options[payload.optionIndex].votes += 1
       result.totalVotes += 1
     }
@@ -75,23 +55,34 @@ export async function submitVote(code, payload) {
   return data
 }
 
-// ── Creator actions ────────────────────────────
+// Merit: open_text response submission
+export async function submitOpenText(code, payload) {
+  if (USE_MOCK) {
+    await delay(400)
+    const result = mockResults[code]
+    if (result) {
+      if (!result.responses) result.responses = []
+      result.responses.push({ text: payload.text, submittedAt: new Date().toISOString() })
+      result.totalVotes += 1
+    }
+    return { success: true }
+  }
+  const { data } = await http.post(`/polls/${code}/respond`, payload)
+  return data
+}
 
-/**
- * PATCH /api/polls/{code}/close
- */
+// ── Creator ────────────────────────────────────
+
 export async function closePoll(code) {
   if (USE_MOCK) {
     await delay(300)
     const poll = mockPolls.find(p => p.code === code)
     if (poll) poll.status = 'closed'
+    if (mockResults[code]) mockResults[code].status = 'closed'
     return { success: true }
   }
   const { data } = await http.patch(`/polls/${code}/close`)
   return data
 }
 
-// ── Helpers ────────────────────────────────────
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)) }
