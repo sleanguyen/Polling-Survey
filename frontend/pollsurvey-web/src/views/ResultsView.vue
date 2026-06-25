@@ -9,7 +9,6 @@
 
       <template v-else-if="store.currentResults">
 
-        <!-- Header -->
         <div class="results-header">
           <div class="header-top">
             <span :class="['badge', store.currentResults.status === 'open' ? 'badge-open' : 'badge-closed']">
@@ -24,17 +23,18 @@
               Close poll
             </button>
           </div>
-          <h1 class="page-title">{{ store.currentResults.question }}</h1>
+          <!-- ✅ .question → .title -->
+          <h1 class="page-title">{{ store.currentResults.title }}</h1>
         </div>
 
-        <!-- Stats row -->
+        <!-- ✅ totalVotes và options lấy từ questions[0] -->
         <div class="stats-row">
           <div class="stat-card">
-            <span class="stat-number">{{ store.currentResults.totalVotes }}</span>
+            <span class="stat-number">{{ store.currentResults.questions[0].totalVotes }}</span>
             <span class="stat-label">Total votes</span>
           </div>
           <div class="stat-card">
-            <span class="stat-number">{{ store.currentResults.options.length }}</span>
+            <span class="stat-number">{{ store.currentResults.questions[0].options.length }}</span>
             <span class="stat-label">Options</span>
           </div>
           <div class="stat-card">
@@ -43,19 +43,18 @@
           </div>
         </div>
 
-        <!-- Chart -->
         <div class="card chart-card">
           <p class="section-label">Vote distribution</p>
-          <VoteChart :results="store.currentResults" />
+          <VoteChart :results="store.currentResults.questions[0]" />
         </div>
 
-        <!-- Breakdown table -->
+        <!-- ✅ opt.votes → opt.voteCount, dùng opt.optionId làm key -->
         <div class="card breakdown-card">
           <p class="section-label">Breakdown</p>
           <div class="breakdown-list">
             <div
               v-for="(opt, rank) in sorted"
-              :key="opt.index"
+              :key="opt.optionId"
               class="breakdown-row"
             >
               <span class="rank" :class="{ 'rank-top': rank === 0 }">
@@ -64,22 +63,21 @@
               <div class="breakdown-main">
                 <div class="breakdown-info">
                   <span class="breakdown-text">{{ opt.text }}</span>
-                  <span class="breakdown-votes">{{ opt.votes }} votes</span>
+                  <span class="breakdown-votes">{{ opt.voteCount }} votes</span>
                 </div>
                 <div class="bar-track">
                   <div
                     class="bar-fill"
                     :class="{ 'bar-top': rank === 0 }"
-                    :style="{ width: pct(opt.votes) + '%' }"
+                    :style="{ width: opt.percentage + '%' }"
                   ></div>
                 </div>
               </div>
-              <span class="breakdown-pct">{{ pct(opt.votes) }}%</span>
+              <span class="breakdown-pct">{{ opt.percentage }}%</span>
             </div>
           </div>
         </div>
 
-        <!-- Live indicator + actions -->
         <div class="results-footer">
           <div v-if="store.currentResults.status === 'open'" class="live-indicator">
             <span class="live-dot"></span>
@@ -112,16 +110,19 @@ const route = useRoute()
 const store = usePollStore()
 const code  = route.params.code
 
+// ✅ Dùng questions[0].options và voteCount thay vì options và votes
 const sorted = computed(() => {
-  if (!store.currentResults) return []
-  return [...store.currentResults.options].sort((a, b) => b.votes - a.votes)
+  const q = store.currentResults?.questions?.[0]
+  if (!q) return []
+  return [...q.options].sort((a, b) => b.voteCount - a.voteCount)
 })
 
 const topOption = computed(() => sorted.value[0]?.text ?? '—')
 
-function pct(votes) {
-  const total = store.currentResults?.totalVotes || 0
-  return total ? Math.round((votes / total) * 100) : 0
+// ✅ BE đã tính sẵn percentage, dùng thẳng — giữ hàm pct phòng khi cần
+function pct(voteCount) {
+  const total = store.currentResults?.questions?.[0]?.totalVotes || 0
+  return total ? Math.round((voteCount / total) * 100) : 0
 }
 
 function handleClose() { store.close(code) }

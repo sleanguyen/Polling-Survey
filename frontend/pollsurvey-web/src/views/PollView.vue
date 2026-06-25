@@ -22,9 +22,9 @@
           <span class="poll-code">poll/{{ code }}</span>
         </div>
 
-        <h1 class="page-title">{{ store.currentPoll.question }}</h1>
+        <!-- ✅ Đổi .question → .title -->
+        <h1 class="page-title">{{ store.currentPoll.title }}</h1>
 
-        <!-- Closed -->
         <div v-if="store.currentPoll.status === 'closed'" class="notice-card">
           <p>This poll is now closed.</p>
           <RouterLink :to="`/results/${code}`" class="btn btn-primary" style="margin-top:1rem">
@@ -32,7 +32,6 @@
           </RouterLink>
         </div>
 
-        <!-- Already voted -->
         <div v-else-if="store.hasVoted" class="notice-card">
           <p>You've already submitted your vote.</p>
           <RouterLink :to="`/results/${code}`" class="btn btn-primary" style="margin-top:1rem">
@@ -40,21 +39,21 @@
           </RouterLink>
         </div>
 
-        <!-- Voting form -->
         <div v-else class="card">
           <p class="label">Choose one option</p>
 
           <div class="options-list">
+            <!-- ✅ Đổi .options → .questions[0].options, key/selected dùng opt.id, text dùng opt.text -->
             <button
-              v-for="(opt, i) in store.currentPoll.options"
-              :key="i"
-              :class="['option-btn', { selected: selected === i }]"
-              @click="selected = i"
+              v-for="opt in store.currentPoll.questions[0].options"
+              :key="opt.id"
+              :class="['option-btn', { selected: selected === opt.id }]"
+              @click="selected = opt.id"
             >
               <span class="option-radio">
-                <span v-if="selected === i" class="radio-fill"></span>
+                <span v-if="selected === opt.id" class="radio-fill"></span>
               </span>
-              <span class="option-text">{{ opt }}</span>
+              <span class="option-text">{{ opt.text }}</span>
             </button>
           </div>
 
@@ -83,11 +82,11 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePollStore } from '@/stores/pollStore.js'
 
-const route  = useRoute()
-const router = useRouter()
-const store  = usePollStore()
-const code   = route.params.code
-const selected = ref(null)
+const route    = useRoute()
+const router   = useRouter()
+const store    = usePollStore()
+const code     = route.params.code
+const selected = ref(null) // ✅ lưu optionId (Guid) thay vì index
 const voting   = ref(false)
 
 onMounted(() => store.fetchPoll(code))
@@ -95,7 +94,7 @@ onMounted(() => store.fetchPoll(code))
 async function submitVote() {
   if (selected.value === null) return
   voting.value = true
-  await store.vote(code, selected.value)
+  await store.vote(code, selected.value) // ✅ truyền optionId
   voting.value = false
   router.push(`/results/${code}`)
 }
