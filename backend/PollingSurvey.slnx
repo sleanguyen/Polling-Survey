@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="PollingSurvey.API/PollingSurvey.API.csproj" />
+  <Project Path="PollSurvey.Tests/PollSurvey.Tests.csproj" />
+</Solution>

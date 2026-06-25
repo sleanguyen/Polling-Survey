@@ -1,0 +1,6 @@
+@PollingSurvey.API_HostAddress = http://localhost:5139
+
+GET {{PollingSurvey.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

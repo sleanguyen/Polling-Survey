@@ -1,0 +1,198 @@
+/* ── Google Fonts ───────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+/* ── Design tokens ──────────────────────────── */
+:root {
+  --color-bg:        #f5de8d;
+  --color-surface:   #fcefc6;
+  --color-surface-2: #fff8e8;
+  --color-border:    #dfc96a;
+  --color-border-soft: rgba(107,14,30,0.12);
+  --color-accent:    #6b0e1e;
+  --color-accent-2:  #9b1a2e;
+  --color-accent-hover: #850f23;
+  --color-text:      #2c0a10;
+  --color-text-soft: #5c3040;
+  --color-muted:     #9b7c50;
+  --color-danger:    #b91c1c;
+  --color-success:   #166534;
+  --color-success-bg:#dcfce7;
+  --color-danger-bg: #fee2e2;
+
+  --radius-xs:  4px;
+  --radius-sm:  8px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
+  --radius-xl:  28px;
+
+  --shadow-sm:  0 1px 3px rgba(107,14,30,0.08), 0 1px 2px rgba(107,14,30,0.06);
+  --shadow-md:  0 4px 16px rgba(107,14,30,0.1), 0 2px 6px rgba(107,14,30,0.06);
+  --shadow-lift:0 8px 24px rgba(107,14,30,0.14), 0 2px 8px rgba(107,14,30,0.08);
+
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'Plus Jakarta Sans', system-ui, sans-serif;
+
+  --transition:       180ms ease;
+  --transition-slow:  320ms ease;
+}
+
+/* ── Reset ──────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: var(--color-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ─────────────────────────────────── */
+.container {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.page {
+  padding: 2.75rem 0 5rem;
+}
+
+/* ── Card ───────────────────────────────────── */
+.card {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Typography ─────────────────────────────── */
+.page-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+
+.page-sub {
+  font-family: var(--font-body);
+  color: var(--color-muted);
+  font-size: 0.97rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Input ──────────────────────────────────── */
+.input {
+  width: 100%;
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  padding: 0.7rem 1rem;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(107,14,30,0.1);
+}
+.input::placeholder { color: var(--color-muted); opacity: 0.7; }
+
+/* ── Buttons ────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.7rem 1.5rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: background var(--transition), transform var(--transition),
+              box-shadow var(--transition), opacity var(--transition);
+  text-decoration: none;
+}
+.btn:active  { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.btn-primary {
+  background: var(--color-accent);
+  color: #f5de8d;
+  box-shadow: 0 2px 8px rgba(107,14,30,0.25);
+}
+.btn-primary:hover {
+  background: var(--color-accent-hover);
+  box-shadow: 0 4px 14px rgba(107,14,30,0.35);
+  transform: translateY(-1px);
+  text-decoration: none;
+  color: #f5de8d;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-soft);
+}
+.btn-outline:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(107,14,30,0.04);
+  text-decoration: none;
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+.btn-danger:hover { opacity: 0.88; }
+
+/* ── Badges ─────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 99px;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.badge-open   { background: var(--color-success-bg); color: var(--color-success); }
+.badge-closed { background: var(--color-danger-bg);  color: var(--color-danger); }
+
+/* ── State boxes ────────────────────────────── */
+.state-box {
+  text-align: center;
+  padding: 3.5rem 1rem;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
