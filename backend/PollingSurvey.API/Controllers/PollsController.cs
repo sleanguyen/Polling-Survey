@@ -1,23 +1,30 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using PollSurvey.API.Data;
+using PollSurvey.API.DTOs;
+using PollingSurvey.API.Hubs;
+using PollSurvey.API.Models;
 using PollSurvey.API.Data;
 using PollSurvey.API.DTOs;
 using PollSurvey.API.Models;
 
-namespace PollSurvey.API.Controllers;
+namespace PollingSurvey.API.Controllers;
 
 [ApiController]
 [Route("api/polls")]
 public class PollsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IHubContext<PollHub> _hub; // ✅ thêm
 
-    public PollsController(AppDbContext context)
+    public PollsController(AppDbContext context, IHubContext<PollHub> hub) // ✅ thêm hub
     {
         _context = context;
+        _hub = hub;
     }
 
-    // POST api/polls — tạo poll mới
+    // POST api/polls
     [HttpPost]
     public async Task<IActionResult> CreatePoll([FromBody] CreatePollRequest request)
     {
@@ -51,7 +58,7 @@ public class PollsController : ControllerBase
         return CreatedAtAction(nameof(GetPoll), new { code = poll.Code }, MapToPollResponse(poll));
     }
 
-    // GET api/polls/{code} — lấy thông tin poll
+    // GET api/polls/{code}
     [HttpGet("{code}")]
     public async Task<IActionResult> GetPoll(string code)
     {
@@ -63,7 +70,6 @@ public class PollsController : ControllerBase
         if (poll == null)
             return NotFound(new { message = "Poll not found." });
 
-        // Kiểm tra hết hạn
         if (poll.ExpiresAt.HasValue && poll.ExpiresAt < DateTime.UtcNow && poll.Status == "open")
         {
             poll.Status = "closed";
@@ -73,7 +79,7 @@ public class PollsController : ControllerBase
         return Ok(MapToPollResponse(poll));
     }
 
-    // POST api/polls/{code}/vote — gửi vote
+    // POST api/polls/{code}/vote ✅ thêm broadcast
     [HttpPost("{code}/vote")]
     public async Task<IActionResult> SubmitVote(string code, [FromBody] SubmitVoteRequest request)
     {
@@ -91,31 +97,60 @@ public class PollsController : ControllerBase
         if (poll.ExpiresAt.HasValue && poll.ExpiresAt < DateTime.UtcNow)
             return StatusCode(403, new { message = "This poll has expired." });
 
-        // Kiểm tra vote trùng
         var alreadyVoted = await _context.Votes
             .AnyAsync(v => v.QuestionId == request.QuestionId && v.VoterToken == request.VoterToken);
 
         if (alreadyVoted)
             return Conflict(new { message = "You have already voted on this question." });
 
-        var vote = new Vote
+        _context.Votes.Add(new Vote
         {
             QuestionId = request.QuestionId,
             OptionId = request.OptionId,
             RatingValue = request.RatingValue,
             OpenTextValue = request.OpenTextValue,
             VoterToken = request.VoterToken
-        };
-
-        _context.Votes.Add(vote);
+        });
         await _context.SaveChangesAsync();
+
+        // ✅ Tính lại kết quả và broadcast cho group của poll này
+        var updatedResults = await BuildResultsAsync(code);
+        await _hub.Clients.Group(code).SendAsync("ReceivePollUpdate", updatedResults);
 
         return Ok(new { message = "Vote submitted successfully." });
     }
 
-    // GET api/polls/{code}/results — xem kết quả
+    // GET api/polls/{code}/results
     [HttpGet("{code}/results")]
     public async Task<IActionResult> GetResults(string code)
+    {
+        var result = await BuildResultsAsync(code);
+        if (result == null)
+            return NotFound(new { message = "Poll not found." });
+
+        return Ok(result);
+    }
+
+    // PATCH api/polls/{code}/close
+    [HttpPatch("{code}/close")]
+    public async Task<IActionResult> ClosePoll(string code)
+    {
+        var poll = await _context.Polls.FirstOrDefaultAsync(p => p.Code == code);
+
+        if (poll == null)
+            return NotFound(new { message = "Poll not found." });
+
+        if (poll.Status == "closed")
+            return BadRequest(new { message = "Poll is already closed." });
+
+        poll.Status = "closed";
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Poll closed successfully." });
+    }
+
+    // ✅ Tách ra dùng chung cho GetResults và SubmitVote
+    private async Task<PollResultResponse?> BuildResultsAsync(string code)
     {
         var poll = await _context.Polls
             .Include(p => p.Questions)
@@ -124,10 +159,9 @@ public class PollsController : ControllerBase
                 .ThenInclude(q => q.Votes)
             .FirstOrDefaultAsync(p => p.Code == code);
 
-        if (poll == null)
-            return NotFound(new { message = "Poll not found." });
+        if (poll == null) return null;
 
-        var result = new PollResultResponse
+        return new PollResultResponse
         {
             PollId = poll.Id,
             Code = poll.Code,
@@ -155,14 +189,21 @@ public class PollsController : ControllerBase
                             OptionId = o.Id,
                             Text = o.Text,
                             VoteCount = count,
-                            Percentage = totalVotes > 0 ? Math.Round((double)count / totalVotes * 100, 1) : 0
+                            Percentage = totalVotes > 0
+                                ? Math.Round((double)count / totalVotes * 100, 1)
+                                : 0
                         };
                     }).ToList();
                 }
                 else if (q.Type == "rating")
                 {
-                    var ratings = q.Votes.Where(v => v.RatingValue.HasValue).Select(v => v.RatingValue!.Value).ToList();
-                    questionResult.AverageRating = ratings.Count > 0 ? Math.Round(ratings.Average(), 2) : null;
+                    var ratings = q.Votes
+                        .Where(v => v.RatingValue.HasValue)
+                        .Select(v => v.RatingValue!.Value)
+                        .ToList();
+                    questionResult.AverageRating = ratings.Count > 0
+                        ? Math.Round(ratings.Average(), 2)
+                        : null;
                 }
                 else if (q.Type == "open_text")
                 {
@@ -175,29 +216,7 @@ public class PollsController : ControllerBase
                 return questionResult;
             }).ToList()
         };
-
-        return Ok(result);
     }
-
-    // PATCH api/polls/{code}/close — đóng poll
-    [HttpPatch("{code}/close")]
-    public async Task<IActionResult> ClosePoll(string code)
-    {
-        var poll = await _context.Polls.FirstOrDefaultAsync(p => p.Code == code);
-
-        if (poll == null)
-            return NotFound(new { message = "Poll not found." });
-
-        if (poll.Status == "closed")
-            return BadRequest(new { message = "Poll is already closed." });
-
-        poll.Status = "closed";
-        await _context.SaveChangesAsync();
-
-        return Ok(new { message = "Poll closed successfully." });
-    }
-
-    // --- Helper methods ---
 
     private static string GenerateShortCode(int length = 6)
     {

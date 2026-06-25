@@ -13,12 +13,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5139',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/api')
       },
       '/pollHub': {
-        target: 'http://localhost:5000',
+          target:'http://localhost:5139',
         ws: true,
         changeOrigin: true
       }
