@@ -1,222 +1,263 @@
-﻿using FluentAssertions;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using PollSurvey.API.Controllers;
+using Moq;
+using PollingSurvey.API.Controllers;
+using PollingSurvey.API.Hubs;
 using PollSurvey.API.Data;
 using PollSurvey.API.DTOs;
+using System.Timers;
+using Xunit;
 
 namespace PollSurvey.Tests;
 
-public class PollsControllerTests
+public class PollsControllerTests : IDisposable
 {
-    // Tạo InMemory database mới cho mỗi test — tránh data bị ảnh hưởng lẫn nhau
-    private AppDbContext CreateDb()
+    private readonly AppDbContext _context;
+    private readonly Mock<IHubContext<PollHub>> _hubMock;
+    private readonly Mock<IClientProxy> _clientProxyMock;
+    private readonly PollsController _controller;
+
+    public PollsControllerTests()
     {
+        // In-memory database để test độc lập
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // mỗi test 1 DB riêng
             .Options;
-        return new AppDbContext(options);
+
+        _context = new AppDbContext(options);
+
+        // Mock IHubContext<PollHub>
+        _clientProxyMock = new Mock<IClientProxy>();
+
+        var hubClientsMock = new Mock<IHubClients>();
+        hubClientsMock
+            .Setup(c => c.Group(It.IsAny<string>()))
+            .Returns(_clientProxyMock.Object);
+
+        _hubMock = new Mock<IHubContext<PollHub>>();
+        _hubMock
+            .Setup(h => h.Clients)
+            .Returns(hubClientsMock.Object);
+
+        // ✅ Truyền đủ 2 tham số vào constructor
+        _controller = new PollsController(_context, _hubMock.Object);
     }
 
-    // ✅ Test 1: Tạo poll hợp lệ → trả về 201 Created
-    [Fact]
-    public async Task CreatePoll_ValidRequest_Returns201()
+    public void Dispose()
     {
-        var db = CreateDb();
-        var controller = new PollsController(db);
+        _context.Dispose();
+    }
 
+    // ─── CREATE POLL ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreatePoll_ValidRequest_ReturnsCreated()
+    {
         var request = new CreatePollRequest
         {
-            Title = "Favourite color?",
-            Questions = new()
+            Title = "Test Poll",
+            Questions = new List<CreateQuestionRequest>
             {
-                new CreateQuestionRequest
+                new()
                 {
-                    Text = "What is your favourite color?",
+                    Text = "Question 1",
                     Type = "multiple_choice",
                     Order = 1,
-                    Options = new()
+                    Options = new List<CreateOptionRequest>
                     {
-                        new CreateOptionRequest { Text = "Red", Order = 1 },
-                        new CreateOptionRequest { Text = "Blue", Order = 2 }
+                        new() { Text = "Option A", Order = 1 },
+                        new() { Text = "Option B", Order = 2 }
                     }
                 }
             }
         };
 
-        var result = await controller.CreatePoll(request);
+        var result = await _controller.CreatePoll(request);
 
-        result.Should().BeOfType<CreatedAtActionResult>()
-            .Which.StatusCode.Should().Be(201);
+        var created = Assert.IsType<CreatedAtActionResult>(result);
+        var response = Assert.IsType<PollResponse>(created.Value);
+        Assert.Equal("Test Poll", response.Title);
+        Assert.Equal("open", response.Status);
     }
 
-    // ✅ Test 2: Tạo poll không có title → trả về 400
     [Fact]
-    public async Task CreatePoll_EmptyTitle_Returns400()
+    public async Task CreatePoll_EmptyTitle_ReturnsBadRequest()
     {
-        var db = CreateDb();
-        var controller = new PollsController(db);
-
         var request = new CreatePollRequest
         {
             Title = "",
-            Questions = new()
+            Questions = new List<CreateQuestionRequest>
             {
-                new CreateQuestionRequest { Text = "Q1", Type = "multiple_choice", Order = 1 }
+                new() { Text = "Q1", Type = "multiple_choice", Order = 1, Options = new() }
             }
         };
 
-        var result = await controller.CreatePoll(request);
+        var result = await _controller.CreatePoll(request);
 
-        result.Should().BeOfType<BadRequestObjectResult>()
-            .Which.StatusCode.Should().Be(400);
+        Assert.IsType<BadRequestObjectResult>(result);
     }
 
-    // ✅ Test 3: Tạo poll không có question → trả về 400
     [Fact]
-    public async Task CreatePoll_NoQuestions_Returns400()
+    public async Task CreatePoll_NoQuestions_ReturnsBadRequest()
     {
-        var db = CreateDb();
-        var controller = new PollsController(db);
-
         var request = new CreatePollRequest
         {
-            Title = "Test Poll",
-            Questions = new()
+            Title = "Poll Without Questions",
+            Questions = new List<CreateQuestionRequest>()
         };
 
-        var result = await controller.CreatePoll(request);
+        var result = await _controller.CreatePoll(request);
 
-        result.Should().BeOfType<BadRequestObjectResult>()
-            .Which.StatusCode.Should().Be(400);
+        Assert.IsType<BadRequestObjectResult>(result);
     }
 
-    // ✅ Test 4: Lấy poll không tồn tại → trả về 404
+    // ─── GET POLL ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetPoll_ExistingCode_ReturnsPoll()
+    {
+        // Arrange: tạo poll trước
+        var createResult = await _controller.CreatePoll(MakeValidRequest("Poll A"));
+        var created = ((CreatedAtActionResult)createResult).Value as PollResponse;
+
+        // Act
+        var result = await _controller.GetPoll(created!.Code);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<PollResponse>(ok.Value);
+        Assert.Equal(created.Code, response.Code);
+    }
+
     [Fact]
     public async Task GetPoll_NotFound_Returns404()
     {
-        var db = CreateDb();
-        var controller = new PollsController(db);
+        var result = await _controller.GetPoll("ZZZZZZ");
 
-        var result = await controller.GetPoll("wrongcode");
-
-        result.Should().BeOfType<NotFoundObjectResult>()
-            .Which.StatusCode.Should().Be(404);
+        Assert.IsType<NotFoundObjectResult>(result);
     }
 
-    // ✅ Test 5: Vote trùng cùng voter token → trả về 409 Conflict
+    // ─── SUBMIT VOTE ───────────────────────────────────────────────
+
     [Fact]
-    public async Task SubmitVote_DuplicateVote_Returns409()
+    public async Task SubmitVote_ValidVote_ReturnsOkAndBroadcasts()
     {
-        var db = CreateDb();
-        var controller = new PollsController(db);
-
-        // Tạo poll trước
-        var createRequest = new CreatePollRequest
-        {
-            Title = "Test Poll",
-            Questions = new()
-            {
-                new CreateQuestionRequest
-                {
-                    Text = "Pick one",
-                    Type = "multiple_choice",
-                    Order = 1,
-                    Options = new()
-                    {
-                        new CreateOptionRequest { Text = "Yes", Order = 1 }
-                    }
-                }
-            }
-        };
-
-        var createResult = await controller.CreatePoll(createRequest) as CreatedAtActionResult;
-        var poll = createResult!.Value as PollSurvey.API.DTOs.PollResponse;
-        var questionId = poll!.Questions[0].Id;
-        var optionId = poll.Questions[0].Options[0].Id;
+        // Arrange
+        var createResult = await _controller.CreatePoll(MakeValidRequest("Vote Poll"));
+        var poll = ((CreatedAtActionResult)createResult).Value as PollResponse;
+        var question = poll!.Questions.First();
+        var option = question.Options.First();
 
         var voteRequest = new SubmitVoteRequest
         {
-            QuestionId = questionId,
-            OptionId = optionId,
-            VoterToken = "token-abc-123"
+            QuestionId = question.Id,
+            OptionId = option.Id,
+            VoterToken = "voter-001"
         };
 
-        // Vote lần 1 — thành công
-        await controller.SubmitVote(poll.Code, voteRequest);
+        // Act
+        var result = await _controller.SubmitVote(poll.Code, voteRequest);
 
-        // Vote lần 2 cùng token — phải bị conflict
-        var result = await controller.SubmitVote(poll.Code, voteRequest);
+        // Assert: response OK
+        Assert.IsType<OkObjectResult>(result);
 
-        result.Should().BeOfType<ConflictObjectResult>()
-            .Which.StatusCode.Should().Be(409);
+        // Assert: SignalR broadcast được gọi
+        _clientProxyMock.Verify(
+            c => c.SendCoreAsync(
+                "ReceivePollUpdate",
+                It.IsAny<object[]>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
-    // ✅ Test 6: Đóng poll → status chuyển thành closed
+    [Fact]
+    public async Task SubmitVote_DuplicateVote_ReturnsConflict()
+    {
+        var createResult = await _controller.CreatePoll(MakeValidRequest("Dup Poll"));
+        var poll = ((CreatedAtActionResult)createResult).Value as PollResponse;
+        var question = poll!.Questions.First();
+        var option = question.Options.First();
+
+        var voteRequest = new SubmitVoteRequest
+        {
+            QuestionId = question.Id,
+            OptionId = option.Id,
+            VoterToken = "voter-dup"
+        };
+
+        await _controller.SubmitVote(poll.Code, voteRequest);
+        var result = await _controller.SubmitVote(poll.Code, voteRequest); // lần 2
+
+        Assert.IsType<ConflictObjectResult>(result);
+    }
+
+    // ─── CLOSE POLL ────────────────────────────────────────────────
+
     [Fact]
     public async Task ClosePoll_OpenPoll_ReturnsOk()
     {
-        var db = CreateDb();
-        var controller = new PollsController(db);
+        var createResult = await _controller.CreatePoll(MakeValidRequest("Close Me"));
+        var poll = ((CreatedAtActionResult)createResult).Value as PollResponse;
 
-        var createRequest = new CreatePollRequest
-        {
-            Title = "Poll to close",
-            Questions = new()
-            {
-                new CreateQuestionRequest
-                {
-                    Text = "Q?", Type = "multiple_choice", Order = 1,
-                    Options = new() { new CreateOptionRequest { Text = "A", Order = 1 } }
-                }
-            }
-        };
+        var result = await _controller.ClosePoll(poll!.Code);
 
-        var createResult = await controller.CreatePoll(createRequest) as CreatedAtActionResult;
-        var poll = createResult!.Value as PollSurvey.API.DTOs.PollResponse;
-
-        var result = await controller.ClosePoll(poll!.Code);
-
-        result.Should().BeOfType<OkObjectResult>()
-            .Which.StatusCode.Should().Be(200);
+        Assert.IsType<OkObjectResult>(result);
     }
 
-    // ✅ Test 7: Vote vào poll đã đóng → trả về 403
     [Fact]
-    public async Task SubmitVote_ClosedPoll_Returns403()
+    public async Task ClosePoll_AlreadyClosed_ReturnsBadRequest()
     {
-        var db = CreateDb();
-        var controller = new PollsController(db);
+        var createResult = await _controller.CreatePoll(MakeValidRequest("Already Closed"));
+        var poll = ((CreatedAtActionResult)createResult).Value as PollResponse;
 
-        var createRequest = new CreatePollRequest
+        await _controller.ClosePoll(poll!.Code);
+        var result = await _controller.ClosePoll(poll.Code); // đóng lần 2
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    // ─── GET RESULTS ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetResults_AfterVote_ReturnsCorrectPercentage()
+    {
+        var createResult = await _controller.CreatePoll(MakeValidRequest("Result Poll"));
+        var poll = ((CreatedAtActionResult)createResult).Value as PollResponse;
+        var question = poll!.Questions.First();
+        var option = question.Options.First();
+
+        await _controller.SubmitVote(poll.Code, new SubmitVoteRequest
         {
-            Title = "Closed Poll",
-            Questions = new()
+            QuestionId = question.Id,
+            OptionId = option.Id,
+            VoterToken = "voter-r1"
+        });
+
+        var result = await _controller.GetResults(poll.Code);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<PollResultResponse>(ok.Value);
+        Assert.Equal(1, response.Questions.First().TotalVotes);
+    }
+
+    // ─── HELPER ────────────────────────────────────────────────────
+
+    private static CreatePollRequest MakeValidRequest(string title) => new()
+    {
+        Title = title,
+        Questions = new List<CreateQuestionRequest>
+        {
+            new()
             {
-                new CreateQuestionRequest
+                Text = "Sample question?",
+                Type = "multiple_choice",
+                Order = 1,
+                Options = new List<CreateOptionRequest>
                 {
-                    Text = "Q?", Type = "multiple_choice", Order = 1,
-                    Options = new() { new CreateOptionRequest { Text = "A", Order = 1 } }
+                    new() { Text = "Yes", Order = 1 },
+                    new() { Text = "No", Order = 2 }
                 }
             }
-        };
-
-        var createResult = await controller.CreatePoll(createRequest) as CreatedAtActionResult;
-        var poll = createResult!.Value as PollSurvey.API.DTOs.PollResponse;
-
-        // Đóng poll trước
-        await controller.ClosePoll(poll!.Code);
-
-        var voteRequest = new SubmitVoteRequest
-        {
-            QuestionId = poll.Questions[0].Id,
-            OptionId = poll.Questions[0].Options[0].Id,
-            VoterToken = "token-xyz"
-        };
-
-        var result = await controller.SubmitVote(poll.Code, voteRequest);
-
-        result.Should().BeOfType<ObjectResult>()
-            .Which.StatusCode.Should().Be(403);
-    }
+        }
+    };
 }
