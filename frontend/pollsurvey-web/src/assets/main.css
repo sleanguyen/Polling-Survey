@@ -196,3 +196,35 @@ a:hover { text-decoration: underline; }
   font-size: 0.95rem;
   line-height: 1.6;
 }
+
+/* ── Responsive ─────────────────────────────── */
+
+/* Tablet & below */
+@media (max-width: 640px) {
+  .container { padding: 0 1rem; }
+  .page      { padding: 1.75rem 0 4rem; }
+  .card      { padding: 1.35rem; border-radius: var(--radius-md); }
+
+  .page-title { font-size: 1.55rem; }
+  .page-sub   { font-size: 0.9rem; }
+
+  /* Buttons full-width on mobile */
+  .btn-primary,
+  .btn-outline { width: 100%; justify-content: center; }
+
+  /* Stats row: 2 columns on small screens */
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .stats-row .stat-card:last-child { grid-column: span 2; }
+}
+
+/* Small phones */
+@media (max-width: 400px) {
+  .page-title { font-size: 1.35rem; }
+
+  /* type grid: 2x2 on tiny screens */
+  .type-grid { grid-template-columns: 1fr 1fr; }
+
+  /* stats: stack vertically */
+  .stats-row { grid-template-columns: 1fr; }
+  .stats-row .stat-card:last-child { grid-column: span 1; }
+}
