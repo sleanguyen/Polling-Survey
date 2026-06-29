@@ -1,15 +1,19 @@
 ﻿using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using PollSurvey.API.Controllers;
+using Moq;
+using PollingSurvey.API.Controllers;
+using PollingSurvey.API.Hubs;
 using PollSurvey.API.Data;
 using PollSurvey.API.DTOs;
+
 
 namespace PollSurvey.Tests;
 
 public class PollsControllerTests
 {
-    // Tạo InMemory database mới cho mỗi test — tránh data bị ảnh hưởng lẫn nhau
+    // ✅ Tạo InMemory database mới cho mỗi test — tránh data bị ảnh hưởng lẫn nhau
     private AppDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -18,12 +22,25 @@ public class PollsControllerTests
         return new AppDbContext(options);
     }
 
+    // ✅ Helper: tạo controller với mock IHubContext<PollHub>
+    private PollsController CreateController(AppDbContext db)
+    {
+        var mockHub = new Mock<IHubContext<PollHub>>();
+        var mockClients = new Mock<IHubClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+
+        mockHub.Setup(h => h.Clients).Returns(mockClients.Object);
+        mockClients.Setup(c => c.Group(It.IsAny<string>())).Returns(mockClientProxy.Object);
+
+        return new PollsController(db, mockHub.Object);
+    }
+
     // ✅ Test 1: Tạo poll hợp lệ → trả về 201 Created
     [Fact]
     public async Task CreatePoll_ValidRequest_Returns201()
     {
         var db = CreateDb();
-        var controller = new PollsController(db);
+        var controller = CreateController(db);
 
         var request = new CreatePollRequest
         {
@@ -55,7 +72,7 @@ public class PollsControllerTests
     public async Task CreatePoll_EmptyTitle_Returns400()
     {
         var db = CreateDb();
-        var controller = new PollsController(db);
+        var controller = CreateController(db);
 
         var request = new CreatePollRequest
         {
@@ -77,7 +94,7 @@ public class PollsControllerTests
     public async Task CreatePoll_NoQuestions_Returns400()
     {
         var db = CreateDb();
-        var controller = new PollsController(db);
+        var controller = CreateController(db);
 
         var request = new CreatePollRequest
         {
@@ -96,7 +113,7 @@ public class PollsControllerTests
     public async Task GetPoll_NotFound_Returns404()
     {
         var db = CreateDb();
-        var controller = new PollsController(db);
+        var controller = CreateController(db);
 
         var result = await controller.GetPoll("wrongcode");
 
@@ -109,9 +126,8 @@ public class PollsControllerTests
     public async Task SubmitVote_DuplicateVote_Returns409()
     {
         var db = CreateDb();
-        var controller = new PollsController(db);
+        var controller = CreateController(db);
 
-        // Tạo poll trước
         var createRequest = new CreatePollRequest
         {
             Title = "Test Poll",
@@ -131,7 +147,7 @@ public class PollsControllerTests
         };
 
         var createResult = await controller.CreatePoll(createRequest) as CreatedAtActionResult;
-        var poll = createResult!.Value as PollSurvey.API.DTOs.PollResponse;
+        var poll = createResult!.Value as PollResponse; // ✅ bỏ prefix namespace thừa
         var questionId = poll!.Questions[0].Id;
         var optionId = poll.Questions[0].Options[0].Id;
 
@@ -152,12 +168,12 @@ public class PollsControllerTests
             .Which.StatusCode.Should().Be(409);
     }
 
-    // ✅ Test 6: Đóng poll → status chuyển thành closed
+    // ✅ Test 6: Đóng poll → trả về 200 OK
     [Fact]
     public async Task ClosePoll_OpenPoll_ReturnsOk()
     {
         var db = CreateDb();
-        var controller = new PollsController(db);
+        var controller = CreateController(db);
 
         var createRequest = new CreatePollRequest
         {
@@ -173,7 +189,7 @@ public class PollsControllerTests
         };
 
         var createResult = await controller.CreatePoll(createRequest) as CreatedAtActionResult;
-        var poll = createResult!.Value as PollSurvey.API.DTOs.PollResponse;
+        var poll = createResult!.Value as PollResponse;
 
         var result = await controller.ClosePoll(poll!.Code);
 
@@ -186,7 +202,7 @@ public class PollsControllerTests
     public async Task SubmitVote_ClosedPoll_Returns403()
     {
         var db = CreateDb();
-        var controller = new PollsController(db);
+        var controller = CreateController(db);
 
         var createRequest = new CreatePollRequest
         {
@@ -202,7 +218,7 @@ public class PollsControllerTests
         };
 
         var createResult = await controller.CreatePoll(createRequest) as CreatedAtActionResult;
-        var poll = createResult!.Value as PollSurvey.API.DTOs.PollResponse;
+        var poll = createResult!.Value as PollResponse;
 
         // Đóng poll trước
         await controller.ClosePoll(poll!.Code);

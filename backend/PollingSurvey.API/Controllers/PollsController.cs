@@ -5,9 +5,6 @@ using PollSurvey.API.Data;
 using PollSurvey.API.DTOs;
 using PollingSurvey.API.Hubs;
 using PollSurvey.API.Models;
-using PollSurvey.API.Data;
-using PollSurvey.API.DTOs;
-using PollSurvey.API.Models;
 
 namespace PollingSurvey.API.Controllers;
 
