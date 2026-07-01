@@ -1,82 +1,64 @@
 import * as signalR from '@microsoft/signalr'
 
-// Toggle to false when the real backend hub is running
-const USE_MOCK = true
+/**
+ * Connected to PollHub.cs (backend/PollingSurvey.API/Hubs/PollHub.cs)
+ *
+ * Hub methods we call:
+ *   - JoinPoll(code)   → joins a SignalR group named by poll code
+ *   - LeavePoll(code)  → leaves that group
+ *
+ * Server → client events:
+ *   - "ReceivePollUpdate" → fired after every successful vote.
+ *     Payload = the FULL PollResultResponse object (not a delta),
+ *     so the client should just replace its local results wholesale.
+ */
 
 let connection = null
 const listeners = {}
-
-// ── Mock event bus (used when USE_MOCK = true) ─────────────────────────────
 
 function emit(event, data) {
   if (listeners[event]) listeners[event].forEach(fn => fn(data))
 }
 
-/** Call this from DevTools console to simulate a live vote:
- *  window.__mockVote('7fGh2', 2)
- */
-if (typeof window !== 'undefined') {
-  window.__mockVote = (pollCode, optionIndex) => {
-    emit('VoteUpdated', { pollCode, optionIndex, totalVotes: Math.floor(Math.random() * 100) })
-  }
-}
-
-// ── Public API ─────────────────────────────────────────────────────────────
-
-/**
- * Connect to the SignalR hub for a specific poll.
- * In mock mode, just registers the mock bus.
- */
 export async function connectToPoll(pollCode) {
-  if (USE_MOCK) {
-    console.info(`[SignalR MOCK] Connected to poll ${pollCode}. Use window.__mockVote('${pollCode}', optionIndex) to simulate votes.`)
-    return
-  }
-
-  if (connection) {
-    await connection.stop()
-  }
+  if (connection) await connection.stop()
 
   connection = new signalR.HubConnectionBuilder()
     .withUrl('/pollHub')
-    .withAutomaticReconnect()
+    .withAutomaticReconnect([0, 1000, 3000, 5000])
     .configureLogging(signalR.LogLevel.Warning)
     .build()
 
-  connection.on('VoteUpdated', (data) => emit('VoteUpdated', data))
-  connection.on('PollClosed', (data) => emit('PollClosed', data))
+  // Backend broadcasts the full updated results after each vote
+  connection.on('ReceivePollUpdate', (data) => emit('ReceivePollUpdate', data))
+
+  connection.onreconnecting(() => emit('ConnectionState', { state: 'reconnecting' }))
+  connection.onreconnected(() => {
+    emit('ConnectionState', { state: 'connected' })
+    connection.invoke('JoinPoll', pollCode).catch(console.error)
+  })
+  connection.onclose(() => emit('ConnectionState', { state: 'disconnected' }))
 
   await connection.start()
   await connection.invoke('JoinPoll', pollCode)
-  console.info(`[SignalR] Connected to poll ${pollCode}`)
+  emit('ConnectionState', { state: 'connected' })
 }
 
-/**
- * Disconnect from the current hub connection.
- */
-export async function disconnect() {
-  if (USE_MOCK) return
-  if (connection) {
-    await connection.stop()
-    connection = null
-  }
+export async function disconnect(pollCode) {
+  if (!connection) return
+  try {
+    if (pollCode) await connection.invoke('LeavePoll', pollCode)
+  } catch { /* connection may already be closed */ }
+  await connection.stop()
+  connection = null
 }
 
-/**
- * Register a handler for a SignalR event.
- * @param {'VoteUpdated'|'PollClosed'} event
- * @param {Function} handler
- */
 export function onEvent(event, handler) {
   if (!listeners[event]) listeners[event] = []
   listeners[event].push(handler)
 }
 
-/**
- * Remove a handler for a SignalR event.
- */
 export function offEvent(event, handler) {
-  if (listeners[event]) {
+  if (listeners[event])
     listeners[event] = listeners[event].filter(fn => fn !== handler)
-  }
 }
