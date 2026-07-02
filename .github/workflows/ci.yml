@@ -2,7 +2,10 @@ name: Backend CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - dev
+      - week_3_task
     paths:
       - 'backend/**'
       - '.github/workflows/ci.yml'
