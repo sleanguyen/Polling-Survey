@@ -1,7 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
-using PollSurvey.API.DTOs;
+using PollingSurvey.Application.DTOs;   
 
 namespace PollSurvey.Tests.IntegrationTests;
 

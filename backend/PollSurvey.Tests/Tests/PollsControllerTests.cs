@@ -1,12 +1,13 @@
 ﻿using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using PollingSurvey.API.Controllers;
-using PollingSurvey.API.Hubs;
+using PollingSurvey.Application.DTOs;
+using PollingSurvey.Application.Interfaces;
+using PollingSurvey.Application.Services;
 using PollingSurvey.Infrastructure.Data;
-using PollSurvey.API.DTOs;
+using PollingSurvey.Infrastructure.Repositories;
 
 namespace PollSurvey.Tests;
 
@@ -21,18 +22,19 @@ public class PollsControllerTests
         return new AppDbContext(options);
     }
 
-    // Tạo PollsController với IHubContext<PollHub> giả (mock) — controller cần
-    // tham số này từ khi thêm SignalR broadcast, nhưng test không cần SignalR thật
+    // Tạo PollsController với PollService thật (trỏ vào cùng db InMemory)
+    // và IPollNotifier giả — test không cần SignalR broadcast thật
     private static PollsController CreateController(AppDbContext db)
     {
-        var mockHub = new Mock<IHubContext<PollHub>>();
-        var mockClients = new Mock<IHubClients>();
-        var mockClientProxy = new Mock<IClientProxy>();
+        var mockNotifier = new Mock<IPollNotifier>();
+        mockNotifier
+            .Setup(n => n.BroadcastPollUpdateAsync(It.IsAny<string>(), It.IsAny<PollResultResponse>()))
+            .Returns(Task.CompletedTask);
 
-        mockClients.Setup(c => c.Group(It.IsAny<string>())).Returns(mockClientProxy.Object);
-        mockHub.Setup(h => h.Clients).Returns(mockClients.Object);
+        var repository = new PollRepository(db);
+        var pollService = new PollService(repository, mockNotifier.Object);
 
-        return new PollsController(db, mockHub.Object);
+        return new PollsController(pollService);
     }
 
     // ✅ Test 1: Tạo poll hợp lệ → trả về 201 Created
@@ -128,7 +130,6 @@ public class PollsControllerTests
         var db = CreateDb();
         var controller = CreateController(db);
 
-        // Tạo poll trước
         var createRequest = new CreatePollRequest
         {
             Title = "Test Poll",
@@ -148,7 +149,7 @@ public class PollsControllerTests
         };
 
         var createResult = await controller.CreatePoll(createRequest) as CreatedAtActionResult;
-        var poll = createResult!.Value as PollSurvey.API.DTOs.PollResponse;
+        var poll = createResult!.Value as PollResponse;
         var questionId = poll!.Questions[0].Id;
         var optionId = poll.Questions[0].Options[0].Id;
 
@@ -190,7 +191,7 @@ public class PollsControllerTests
         };
 
         var createResult = await controller.CreatePoll(createRequest) as CreatedAtActionResult;
-        var poll = createResult!.Value as PollSurvey.API.DTOs.PollResponse;
+        var poll = createResult!.Value as PollResponse;
 
         var result = await controller.ClosePoll(poll!.Code);
 
@@ -219,9 +220,8 @@ public class PollsControllerTests
         };
 
         var createResult = await controller.CreatePoll(createRequest) as CreatedAtActionResult;
-        var poll = createResult!.Value as PollSurvey.API.DTOs.PollResponse;
+        var poll = createResult!.Value as PollResponse;
 
-        // Đóng poll trước
         await controller.ClosePoll(poll!.Code);
 
         var voteRequest = new SubmitVoteRequest

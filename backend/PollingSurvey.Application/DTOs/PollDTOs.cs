@@ -1,4 +1,4 @@
-﻿namespace PollSurvey.API.DTOs;
+﻿namespace PollingSurvey.Application.DTOs;
 
 // --- REQUEST ---
 
