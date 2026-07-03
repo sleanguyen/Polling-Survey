@@ -1,4 +1,7 @@
 <Solution>
   <Project Path="PollingSurvey.API/PollingSurvey.API.csproj" />
+  <Project Path="PollingSurvey.Application/PollingSurvey.Application.csproj" />
+  <Project Path="PollingSurvey.Domain/PollingSurvey.Domain.csproj" />
+  <Project Path="PollingSurvey.Infrastructure/PollingSurvey.Infrastructure.csproj" />
   <Project Path="PollSurvey.Tests/PollSurvey.Tests.csproj" />
 </Solution>

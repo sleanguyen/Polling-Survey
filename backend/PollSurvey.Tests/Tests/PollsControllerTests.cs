@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Moq;
 using PollingSurvey.API.Controllers;
 using PollingSurvey.API.Hubs;
-using PollSurvey.API.Data;
+using PollingSurvey.Infrastructure.Data;
 using PollSurvey.API.DTOs;
 
 namespace PollSurvey.Tests;

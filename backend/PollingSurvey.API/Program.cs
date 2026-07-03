@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using PollSurvey.API.Data;
+using PollingSurvey.Infrastructure.Data;
 using PollingSurvey.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);

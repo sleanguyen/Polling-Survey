@@ -1,13 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using PollSurvey.API.Data;
 using PollSurvey.API.DTOs;
 using PollingSurvey.API.Hubs;
-using PollSurvey.API.Models;
-using PollSurvey.API.Data;
-using PollSurvey.API.DTOs;
-using PollSurvey.API.Models;
+using PollingSurvey.Infrastructure.Data;
+using PollingSurvey.Domain.Entities;
 
 namespace PollingSurvey.API.Controllers;
 

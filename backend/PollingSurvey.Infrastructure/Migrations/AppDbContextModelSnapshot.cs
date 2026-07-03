@@ -4,12 +4,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using PollSurvey.API.Data;
+using PollingSurvey.Infrastructure.Data;
 
 #nullable disable
 
-namespace PollingSurvey.API.Migrations
-{
+namespace PollingSurvey.Infrastructure.Migrations;
+
     [DbContext(typeof(AppDbContext))]
     partial class AppDbContextModelSnapshot : ModelSnapshot
     {
@@ -195,4 +195,4 @@ namespace PollingSurvey.API.Migrations
 #pragma warning restore 612, 618
         }
     }
-}
+

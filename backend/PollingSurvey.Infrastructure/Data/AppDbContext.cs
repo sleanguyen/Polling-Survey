@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PollSurvey.API.Models;
+using PollingSurvey.Domain.Entities;
 
-namespace PollSurvey.API.Data;
+namespace PollingSurvey.Infrastructure.Data;
 
 public class AppDbContext : DbContext
 {
