@@ -26,17 +26,30 @@ public class PollsControllerTests
     // và IPollNotifier giả — test không cần SignalR broadcast thật
     private static PollsController CreateController(AppDbContext db)
     {
+        // Fake SignalR notifier
         var mockNotifier = new Mock<IPollNotifier>();
+
         mockNotifier
-            .Setup(n => n.BroadcastPollUpdateAsync(It.IsAny<string>(), It.IsAny<PollResultResponse>()))
+            .Setup(n => n.BroadcastPollUpdateAsync(
+                It.IsAny<string>(),
+                It.IsAny<PollResultResponse>()))
             .Returns(Task.CompletedTask);
 
+        // PollService thật
         var repository = new PollRepository(db);
         var pollService = new PollService(repository, mockNotifier.Object);
 
-        return new PollsController(pollService);
-    }
+        // Fake QR Service
+        var mockQrService = new Mock<IQRCodeService>();
 
+        mockQrService
+            .Setup(x => x.GeneratePollQRCode(It.IsAny<string>()))
+            .Returns(Array.Empty<byte>());
+
+        return new PollsController(
+            pollService,
+            mockQrService.Object);
+    }
     // ✅ Test 1: Tạo poll hợp lệ → trả về 201 Created
     [Fact]
     public async Task CreatePoll_ValidRequest_Returns201()

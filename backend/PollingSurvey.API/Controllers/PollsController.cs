@@ -10,10 +10,12 @@ namespace PollingSurvey.API.Controllers;
 public class PollsController : ControllerBase
 {
     private readonly IPollService _pollService;
+    private readonly IQRCodeService _qrCodeService;
 
-    public PollsController(IPollService pollService)
+    public PollsController(IPollService pollService, IQRCodeService qrCodeService)
     {
         _pollService = pollService;
+        _qrCodeService = qrCodeService;
     }
 
     // POST api/polls
@@ -72,6 +74,20 @@ public class PollsController : ControllerBase
             ServiceResultStatus.Success => Ok(result.Data),
             _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = "Unexpected error." })
         };
+    }
+
+    // GET api/polls/{code}/qrcode
+    [HttpGet("{code}/qrcode")]
+    public async Task<IActionResult> GetQrCode(string code)
+    {
+        var pollResult = await _pollService.GetPollAsync(code);
+
+        if (pollResult.Status == ServiceResultStatus.NotFound)
+            return NotFound(new { message = pollResult.Message });
+
+        var qrCodeBytes = _qrCodeService.GeneratePollQRCode(code);
+
+        return File(qrCodeBytes, "image/png");
     }
 
     // PATCH api/polls/{code}/close
