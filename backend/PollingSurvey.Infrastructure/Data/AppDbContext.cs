@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PollSurvey.API.Models;
+using PollingSurvey.Domain.Entities;
 
-namespace PollSurvey.API.Data;
+namespace PollingSurvey.Infrastructure.Data;
 
 public class AppDbContext : DbContext
 {
@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<Question> Questions => Set<Question>();
     public DbSet<Option> Options => Set<Option>();
     public DbSet<Vote> Votes => Set<Vote>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,5 +55,22 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Vote>()
             .HasIndex(v => new { v.QuestionId, v.VoterToken })
             .IsUnique();
+
+        // User
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Username)
+            .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.Role)
+            .HasDefaultValue("User");
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.CreatedAt)
+            .HasDefaultValueSql("GETUTCDATE()");
     }
 }

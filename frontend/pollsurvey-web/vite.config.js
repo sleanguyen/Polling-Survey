@@ -13,12 +13,14 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        // Đã sửa từ localhost:5000 thành 127.0.0.1:5139
+        target: 'http://127.0.0.1:5139', 
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/api')
       },
       '/pollHub': {
-        target: 'http://localhost:5000',
+        // Đã sửa cho phần kết nối Real-time (SignalR) đồng bộ với backend
+        target: 'http://127.0.0.1:5139', 
         ws: true,
         changeOrigin: true
       }

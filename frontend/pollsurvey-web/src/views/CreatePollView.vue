@@ -113,15 +113,40 @@
         <div v-if="createdPoll" class="card success-card">
           <div class="success-icon">✓</div>
           <p class="success-label">Poll created!</p>
+
           <div class="share-row">
             <p class="share-link">{{ shareUrl() }}</p>
             <button class="btn btn-outline copy-btn" @click="copyLink">
               {{ copied ? '✓ Copied!' : 'Copy link' }}
             </button>
           </div>
-          <RouterLink :to="`/poll/${createdPoll.code}`" class="btn btn-primary full-btn">
-            Open voting page →
-          </RouterLink>
+
+          <!-- QR Code — fetched directly from backend as PNG -->
+          <div class="qr-section">
+            <p class="qr-label">Scan to vote</p>
+            <div class="qr-wrapper">
+              <img
+                v-if="!USE_MOCK"
+                :src="qrUrl"
+                alt="QR Code for this poll"
+                class="qr-img"
+              />
+              <!-- Mock mode placeholder -->
+              <div v-else class="qr-placeholder">
+                <span class="qr-icon">▦</span>
+                <p class="qr-mock-note">QR available when backend is connected</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="success-actions">
+            <RouterLink :to="`/poll/${createdPoll.code}`" class="btn btn-primary">
+              Open voting page →
+            </RouterLink>
+            <RouterLink :to="`/results/${createdPoll.code}`" class="btn btn-outline">
+              View results
+            </RouterLink>
+          </div>
         </div>
       </Transition>
 
@@ -130,8 +155,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { usePollStore } from '@/stores/pollStore.js'
+import { getQrCodeUrl } from '@/api/pollApi.js'
 
 const store        = usePollStore()
 const loading      = ref(false)
@@ -142,6 +168,10 @@ const questionType = ref('multiple_choice')
 const errors       = reactive({})
 const createdPoll  = ref(null)
 const copied       = ref(false)
+const USE_MOCK     = false   // matches pollApi.js
+const qrUrl        = computed(() =>
+  createdPoll.value ? getQrCodeUrl(createdPoll.value.code) : ''
+)
 
 const questionTypes = [
   { value: 'multiple_choice', icon: '☑️', label: 'Multiple choice' },
@@ -304,4 +334,38 @@ function computeExpiry(val) {
 .opt-enter-from, .opt-leave-to { opacity:0; transform:translateY(-8px); }
 .fade-up-enter-active { transition:all .3s ease; }
 .fade-up-enter-from   { opacity:0; transform:translateY(12px); }
+
+/* QR Code */
+.qr-section { margin: 1.25rem 0; }
+.qr-label {
+  font-size: .75rem; font-weight: 700; color: var(--color-muted);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: .75rem;
+}
+.qr-wrapper {
+  display: flex; justify-content: center;
+}
+.qr-img {
+  width: 160px; height: 160px;
+  border-radius: var(--radius-sm);
+  border: 4px solid var(--color-surface-2);
+  box-shadow: var(--shadow-md);
+}
+.qr-placeholder {
+  width: 160px; height: 160px;
+  background: var(--color-bg);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: .5rem;
+}
+.qr-icon { font-size: 2.5rem; color: var(--color-muted); opacity: .4; }
+.qr-mock-note { font-size: .72rem; color: var(--color-muted); text-align: center; padding: 0 .5rem; }
+
+.success-actions {
+  display: flex; gap: .75rem; flex-wrap: wrap;
+  margin-top: .5rem;
+}
+.success-actions .btn { flex: 1; min-width: 130px; }
+
 </style>

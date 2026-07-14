@@ -1,4 +1,4 @@
-﻿namespace PollSurvey.API.Models;
+﻿namespace PollingSurvey.Domain.Entities;
 
 public class Vote
 {
