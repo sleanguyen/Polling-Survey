@@ -8,8 +8,10 @@ using PollingSurvey.Application.Interfaces;
 using PollingSurvey.Application.Repositories;
 using PollingSurvey.Application.Services;
 using PollingSurvey.Infrastructure.Repositories;
+using PollingSurvey.Infrastructure.Security;
 using FluentValidation;
 using PollingSurvey.Application.Validators;
+using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,10 +23,17 @@ if (!builder.Environment.IsEnvironment("Testing"))
             builder.Configuration.GetConnectionString("DefaultConnection")));
 }
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddFluentValidation(fv =>
+    {
+        fv.RegisterValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
+
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 
 // ✅ Đăng ký toàn bộ Application layer
 builder.Services.AddScoped<IPollRepository, PollRepository>();
@@ -32,7 +41,10 @@ builder.Services.AddScoped<IPollNotifier, SignalRPollNotifier>();
 builder.Services.AddScoped<IPollService, PollService>();
 builder.Services.AddScoped<IQRCodeService, QRCodeService>();
 
-builder.Services.AddValidatorsFromAssemblyContaining<CreatePollRequestValidator>();
+// ✅ Phase 1 - Authentication (register only)
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddCors(options =>
 {
