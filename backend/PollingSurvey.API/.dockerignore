@@ -1,8 +1,10 @@
-bin/
-obj/
 **/bin/
 **/obj/
-.vs/
+**/.vs/
+**/.vscode/
+**/*.user
+**/TestResults/
 .git/
-.github/
-*.user
+.gitignore
+.env
+PollSurvey.Tests/
