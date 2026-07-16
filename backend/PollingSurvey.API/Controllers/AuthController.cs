@@ -30,4 +30,19 @@ public class AuthController : ControllerBase
             _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = "Unexpected error." })
         };
     }
+
+    // POST api/auth/login
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        var result = await _authService.LoginAsync(request);
+
+        return result.Status switch
+        {
+            ServiceResultStatus.ValidationError => BadRequest(new { message = result.Message }),
+            ServiceResultStatus.Unauthorized => Unauthorized(new { message = result.Message }),
+            ServiceResultStatus.Success => Ok(result.Data),
+            _ => StatusCode(StatusCodes.Status500InternalServerError, new { message = "Unexpected error." })
+        };
+    }
 }
