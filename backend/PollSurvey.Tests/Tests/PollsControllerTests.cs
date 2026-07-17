@@ -37,18 +37,20 @@ public class PollsControllerTests
 
         // PollService thật
         var repository = new PollRepository(db);
-        var pollService = new PollService(repository, mockNotifier.Object);
 
-        // Fake QR Service
-        var mockQrService = new Mock<IQRCodeService>();
+        // Fake cache — không cần Redis thật khi test, mọi GetAsync trả về null (cache miss),
+        // SetAsync/RemoveAsync là no-op mặc định của Moq cho Task-returning method
+        var cacheServiceMock = new Mock<ICacheService>();
 
-        mockQrService
-            .Setup(x => x.GeneratePollQRCode(It.IsAny<string>()))
+        var pollService = new PollService(repository, mockNotifier.Object, cacheServiceMock.Object);
+
+        // Fake QR service
+        var mockQrCodeService = new Mock<IQRCodeService>();
+        mockQrCodeService
+            .Setup(q => q.GeneratePollQRCode(It.IsAny<string>()))
             .Returns(Array.Empty<byte>());
 
-        return new PollsController(
-            pollService,
-            mockQrService.Object);
+        return new PollsController(pollService, mockQrCodeService.Object);
     }
     // ✅ Test 1: Tạo poll hợp lệ → trả về 201 Created
     [Fact]

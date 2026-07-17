@@ -11,9 +11,11 @@ using PollingSurvey.Application.Interfaces;
 using PollingSurvey.Application.Repositories;
 using PollingSurvey.Application.Services;
 using PollingSurvey.Application.Validators;
+using PollingSurvey.Infrastructure.Caching;
 using PollingSurvey.Infrastructure.Data;
 using PollingSurvey.Infrastructure.Repositories;
 using PollingSurvey.Infrastructure.Security;
+using StackExchange.Redis;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -71,6 +73,12 @@ builder.Services.AddScoped<IPollRepository, PollRepository>();
 builder.Services.AddScoped<IPollNotifier, SignalRPollNotifier>();
 builder.Services.AddScoped<IPollService, PollService>();
 builder.Services.AddScoped<IQRCodeService, QRCodeService>();
+
+// ✅ Redis Cache
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
@@ -146,10 +154,9 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     app.UseSwagger();
-
     app.UseSwaggerUI();
 }
 

@@ -10,11 +10,15 @@ public class PollService : IPollService
 {
     private readonly IPollRepository _repository;
     private readonly IPollNotifier _notifier;
+    private readonly ICacheService _cacheService;
 
-    public PollService(IPollRepository repository, IPollNotifier notifier)
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+
+    public PollService(IPollRepository repository, IPollNotifier notifier, ICacheService cacheService)
     {
         _repository = repository;
         _notifier = notifier;
+        _cacheService = cacheService;
     }
 
     public async Task<ServiceResult<PollResponse>> CreatePollAsync(CreatePollRequest request)
@@ -46,11 +50,21 @@ public class PollService : IPollService
         await _repository.AddPollAsync(poll);
         await _repository.SaveChangesAsync();
 
+        // ✅ Code vừa được sinh ngẫu nhiên nên chưa từng có cache cũ,
+        // nhưng vẫn invalidate cho chắc chắn (no-op, phòng trường hợp trùng code trong tương lai)
+        await _cacheService.RemoveAsync(GetPollCacheKey(poll.Code));
+
         return ServiceResult<PollResponse>.Success(MapToPollResponse(poll));
     }
 
     public async Task<ServiceResult<PollResponse>> GetPollAsync(string code)
     {
+        var cacheKey = GetPollCacheKey(code);
+        var cached = await _cacheService.GetAsync<PollResponse>(cacheKey);
+
+        if (cached != null)
+            return ServiceResult<PollResponse>.Success(cached);
+
         var poll = await _repository.GetPollByCodeAsync(code);
 
         if (poll == null)
@@ -62,7 +76,10 @@ public class PollService : IPollService
             await _repository.SaveChangesAsync();
         }
 
-        return ServiceResult<PollResponse>.Success(MapToPollResponse(poll));
+        var response = MapToPollResponse(poll);
+        await _cacheService.SetAsync(cacheKey, response, CacheDuration);
+
+        return ServiceResult<PollResponse>.Success(response);
     }
 
     public async Task<ServiceResult<string>> SubmitVoteAsync(string code, SubmitVoteRequest request)
@@ -91,6 +108,9 @@ public class PollService : IPollService
             VoterToken = request.VoterToken
         });
         await _repository.SaveChangesAsync();
+
+        // ✅ Invalidate cache của poll này vì có vote mới
+        await _cacheService.RemoveAsync(GetPollCacheKey(code));
 
         // ✅ Tính lại kết quả và broadcast cho group của poll này
         var updatedResults = await BuildResultsAsync(code);
@@ -122,6 +142,9 @@ public class PollService : IPollService
 
         poll.Status = "closed";
         await _repository.SaveChangesAsync();
+
+        // ✅ Invalidate cache vì Status vừa đổi
+        await _cacheService.RemoveAsync(GetPollCacheKey(code));
 
         return ServiceResult<string>.Success("Poll closed successfully.");
     }
@@ -197,6 +220,8 @@ public class PollService : IPollService
         return new string(Enumerable.Repeat(chars, length)
             .Select(s => s[random.Next(s.Length)]).ToArray());
     }
+
+    private static string GetPollCacheKey(string code) => $"poll:{code}";
 
     private static PollResponse MapToPollResponse(Poll poll) => new()
     {

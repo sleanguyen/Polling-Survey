@@ -19,6 +19,23 @@ services:
       - pollingsurvey-network
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: pollingsurvey-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - pollingsurvey-network
+    restart: unless-stopped
+
   api:
     build:
       context: .
@@ -28,6 +45,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=PollSurveyDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;"
+      ConnectionStrings__Redis: "redis:6379"
       JwtSettings__Key: ${JWT_KEY}
       JwtSettings__Issuer: ${JWT_ISSUER:-PollingSurvey.API}
       JwtSettings__Audience: ${JWT_AUDIENCE:-PollingSurvey.Client}
@@ -37,12 +55,15 @@ services:
     depends_on:
       sqlserver:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - pollingsurvey-network
     restart: unless-stopped
 
 volumes:
   sqlserver_data:
+  redis_data:
 
 networks:
   pollingsurvey-network:
