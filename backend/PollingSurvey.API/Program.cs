@@ -1,21 +1,27 @@
-using System.Threading.RateLimiting;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using PollingSurvey.Infrastructure.Data;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using PollingSurvey.API.Hubs;
 using PollingSurvey.API.Realtime;
 using PollingSurvey.Application.Interfaces;
 using PollingSurvey.Application.Repositories;
 using PollingSurvey.Application.Services;
+using PollingSurvey.Application.Validators;
+using PollingSurvey.Infrastructure.Caching;
+using PollingSurvey.Infrastructure.Data;
 using PollingSurvey.Infrastructure.Repositories;
 using PollingSurvey.Infrastructure.Security;
-using FluentValidation;
-using PollingSurvey.Application.Validators;
-using FluentValidation.AspNetCore;
+using StackExchange.Redis;
+using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ CHỈ REGISTER SQL SERVER KHI KHÔNG PHẢI TEST
+
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
@@ -23,28 +29,93 @@ if (!builder.Environment.IsEnvironment("Testing"))
             builder.Configuration.GetConnectionString("DefaultConnection")));
 }
 
+
 builder.Services
     .AddControllers()
     .AddFluentValidation(fv =>
     {
         fv.RegisterValidatorsFromAssemblyContaining<RegisterRequestValidator>();
     });
+
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddSignalR();
 
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 
-// ✅ Đăng ký toàn bộ Application layer
+builder.Services.AddSignalR();
+
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "PollingSurvey.API",
+        Version = "v1"
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "Enter JWT token.\nExample: Bearer eyJhbGciOiJIUzI1NiIs...",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+    });
+});
+
+
 builder.Services.AddScoped<IPollRepository, PollRepository>();
 builder.Services.AddScoped<IPollNotifier, SignalRPollNotifier>();
 builder.Services.AddScoped<IPollService, PollService>();
 builder.Services.AddScoped<IQRCodeService, QRCodeService>();
 
-// ✅ Phase 1 - Authentication (register only)
+// ✅ Redis Cache
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(redisConnectionString));
+builder.Services.AddScoped<ICacheService, RedisCacheService>();
+
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+builder.Services.Configure<JwtSettings>(
+    builder.Configuration.GetSection("JwtSettings"));
+
+builder.Services.AddScoped<IJwtService, JwtService>();
+
+var jwtSettings = builder.Configuration
+    .GetSection("JwtSettings")
+    .Get<JwtSettings>()!;
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSettings.Key)),
+
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 
 builder.Services.AddCors(options =>
 {
@@ -57,39 +128,48 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ✅ Phase 1 - Rate Limiting (global, per-client-IP, fixed window)
+
 builder.Services.AddRateLimiter(options =>
 {
-    // Trả về 429 khi vượt giới hạn
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Áp dụng giới hạn cho toàn bộ API, partition theo IP của client
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-    {
-        var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-        return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
+    options.GlobalLimiter =
+        PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         {
-            PermitLimit = 100,
-            Window = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = 0
+            var partitionKey =
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey,
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 100,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                });
         });
-    });
 });
+
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
 app.UseCors("AllowFrontend");
+
 app.UseRateLimiter();
+
+app.UseAuthentication();
+
 app.UseAuthorization();
+
 app.MapControllers();
+
 app.MapHub<PollHub>("/pollHub");
 
 app.Run();

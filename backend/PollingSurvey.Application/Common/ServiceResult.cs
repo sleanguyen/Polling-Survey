@@ -1,4 +1,4 @@
-﻿namespace PollingSurvey.Application.Common;
+namespace PollingSurvey.Application.Common;
 
 public enum ServiceResultStatus
 {
@@ -6,7 +6,8 @@ public enum ServiceResultStatus
     NotFound,
     Conflict,
     Forbidden,
-    ValidationError
+    ValidationError,
+    Unauthorized
 }
 
 public class ServiceResult<T>
@@ -27,4 +28,5 @@ public class ServiceResult<T>
     public static ServiceResult<T> Conflict(string message) => new(ServiceResultStatus.Conflict, default, message);
     public static ServiceResult<T> Forbidden(string message) => new(ServiceResultStatus.Forbidden, default, message);
     public static ServiceResult<T> ValidationError(string message) => new(ServiceResultStatus.ValidationError, default, message);
+    public static ServiceResult<T> Unauthorized(string message) => new(ServiceResultStatus.Unauthorized, default, message);
 }

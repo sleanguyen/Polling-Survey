@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PollingSurvey.Application.Common;
 using PollingSurvey.Application.DTOs;
 using PollingSurvey.Application.Interfaces;
@@ -91,6 +92,7 @@ public class PollsController : ControllerBase
     }
 
     // PATCH api/polls/{code}/close
+    [Authorize]
     [HttpPatch("{code}/close")]
     public async Task<IActionResult> ClosePoll(string code)
     {
