@@ -121,8 +121,8 @@ builder.Services.AddCors(options =>
     {
         policy.SetIsOriginAllowed(origin =>
                 origin == "http://localhost:5173" ||
-                origin == "https://polling-survey-testpersonal.vercel.app" ||
-                (origin.StartsWith("https://polling-survey-testpersonal-") && origin.EndsWith(".vercel.app"))
+                origin == "https://polling-survey-testnew.vercel.app" ||
+                (origin.StartsWith("https://polling-survey-testnew-") && origin.EndsWith(".vercel.app"))
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
