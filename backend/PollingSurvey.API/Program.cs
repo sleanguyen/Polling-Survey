@@ -119,14 +119,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.SetIsOriginAllowed(origin =>
-                origin == "http://localhost:5173" ||
-                origin == "https://polling-survey-testnew.vercel.app" ||
-                (origin.StartsWith("https://polling-survey-testnew-") && origin.EndsWith(".vercel.app"))
-              )
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowAnyMethod();
     });
 });
 
