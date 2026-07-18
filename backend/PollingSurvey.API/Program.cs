@@ -21,7 +21,6 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
@@ -34,7 +33,6 @@ else
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 }
 
-
 builder.Services
     .AddControllers()
     .AddFluentValidation(fv =>
@@ -43,11 +41,8 @@ builder.Services
     });
 
 builder.Services.AddEndpointsApiExplorer();
-
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
-
 builder.Services.AddSignalR();
-
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -73,7 +68,6 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-
 builder.Services.AddScoped<IPollRepository, PollRepository>();
 builder.Services.AddScoped<IPollNotifier, SignalRPollNotifier>();
 builder.Services.AddScoped<IPollService, PollService>();
@@ -91,7 +85,6 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
-
 builder.Services.AddScoped<IJwtService, JwtService>();
 
 var jwtSettings = builder.Configuration
@@ -121,18 +114,21 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-
+// CORS Policy for Frontend Access
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "https://polling-survey-testpersonal.vercel.app",
+                "https://polling-survey-testpersonal-rlc4ttvvj-reverielion.vercel.app"
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
-
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -156,7 +152,6 @@ builder.Services.AddRateLimiter(options =>
         });
 });
 
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
@@ -166,15 +161,10 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 }
 
 app.UseCors("AllowFrontend");
-
 app.UseRateLimiter();
-
 app.UseAuthentication();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.MapHub<PollHub>("/pollHub");
 
 app.Run();
