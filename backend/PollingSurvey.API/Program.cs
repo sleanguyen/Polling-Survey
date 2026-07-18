@@ -122,7 +122,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "http://localhost:5173",
                 "https://polling-survey-testpersonal.vercel.app",
-                "https://polling-survey-testpersonal-rlc4ttvvj-reverielion.vercel.app"
+                "https://polling-survey-testpersonal-c6aptohzu-reverielion.vercel.app/"
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
