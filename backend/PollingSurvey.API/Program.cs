@@ -82,7 +82,7 @@ builder.Services.AddScoped<IQRCodeService, QRCodeService>();
 // ✅ Redis Cache
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(redisConnectionString));
+    ConnectionMultiplexer.Connect(redisConnectionString + ",abortConnect=false"));
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
