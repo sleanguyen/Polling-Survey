@@ -12,7 +12,10 @@
         <!-- Expired/Closed banner -->
         <Transition name="banner">
           <div v-if="store.currentResults.status === 'closed'" class="expired-banner">
-            <span class="banner-icon">🔒</span>
+            <svg class="banner-icon" width="22" height="22" viewBox="0 0 20 20" fill="none">
+              <rect x="4" y="9" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M6.5 9V6.5a3.5 3.5 0 0 1 7 0V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
             <div>
               <p class="banner-title">Đã kết thúc</p>
               <p class="banner-sub">This poll has closed. The results below are final.</p>
@@ -41,7 +44,10 @@
                 :to="`/analytics/${code}`"
                 class="btn btn-outline analytics-btn"
               >
-                📊 Analytics
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                  <path d="M2 12V7M6.5 12V2M11 12V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                Analytics
               </RouterLink>
               <button
                 v-if="store.currentResults.status === 'open'"
@@ -149,7 +155,7 @@
             <span class="live-dot"></span>
             <span>Updates live via SignalR</span>
           </div>
-          <div v-else class="final-indicator"><span>🔒</span><span>Final results</span></div>
+          <div v-else class="final-indicator"><span class="final-dot"></span><span>Final results</span></div>
           <RouterLink :to="`/poll/${code}`" class="btn btn-outline">← Vote again</RouterLink>
         </div>
 
@@ -210,7 +216,7 @@ onUnmounted(() => {
 
 <style scoped>
 .expired-banner { display:flex; align-items:center; gap:1rem; background:#fff8e8; border:1px solid rgba(107,14,30,.2); border-radius:var(--radius-md); padding:1rem 1.25rem; margin-bottom:1.25rem; }
-.banner-icon  { font-size:1.6rem; flex-shrink:0; }
+.banner-icon  { flex-shrink:0; color:var(--color-accent); }
 .banner-title { font-family:var(--font-display); font-size:1rem; font-weight:700; color:var(--color-text); }
 .banner-sub   { font-size:.85rem; color:var(--color-muted); margin-top:.15rem; }
 
@@ -222,7 +228,7 @@ onUnmounted(() => {
 .header-actions { display:flex; gap:.5rem; }
 .close-btn { font-size:.82rem; padding:.4rem .9rem; color:var(--color-danger); border-color:rgba(185,28,28,.25); }
 .close-btn:hover { background:var(--color-danger-bg); border-color:var(--color-danger); }
-.analytics-btn { font-size:.82rem; padding:.4rem .9rem; }
+.analytics-btn { display:inline-flex; align-items:center; gap:.4rem; font-size:.82rem; padding:.4rem .9rem; }
 
 .question-block { margin-bottom:2rem; }
 .q-label { font-size:.82rem; font-weight:700; color:var(--color-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:.85rem; }
@@ -265,6 +271,7 @@ onUnmounted(() => {
 .results-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
 .live-indicator  { display:flex; align-items:center; gap:.5rem; font-size:.82rem; font-weight:600; color:var(--color-success); }
 .final-indicator { display:flex; align-items:center; gap:.5rem; font-size:.82rem; font-weight:600; color:var(--color-muted); }
+.final-dot { width:7px; height:7px; border-radius:50%; background:var(--color-muted); display:inline-block; }
 
 .loader { width:36px; height:36px; border-radius:50%; border:3px solid var(--color-border); border-top-color:var(--color-accent); animation:spin .8s linear infinite; margin:0 auto 1rem; }
 @keyframes spin { to { transform:rotate(360deg); } }
