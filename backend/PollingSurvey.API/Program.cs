@@ -119,10 +119,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "https://polling-survey-testpersonal.vercel.app",
-                "https://polling-survey-testpersonal-c6aptohzu-reverielion.vercel.app/"
+        policy.SetIsOriginAllowed(origin =>
+                origin == "http://localhost:5173" ||
+                origin == "https://polling-survey-testpersonal.vercel.app" ||
+                (origin.StartsWith("https://polling-survey-testpersonal-") && origin.EndsWith(".vercel.app"))
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
