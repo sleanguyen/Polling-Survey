@@ -57,7 +57,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend/PollingSurvey.API
+          context: ./backend
           file: ./backend/PollingSurvey.API/Dockerfile
           push: true
           tags: |
