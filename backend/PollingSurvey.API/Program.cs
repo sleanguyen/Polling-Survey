@@ -72,7 +72,8 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddScoped<IPollRepository, PollRepository>();
 builder.Services.AddScoped<IPollNotifier, SignalRPollNotifier>();
 builder.Services.AddScoped<IPollService, PollService>();
-builder.Services.AddScoped<IQRCodeService, QRCodeService>();
+builder.Services.AddScoped<IQRCodeService>(sp =>
+    new QRCodeService(builder.Configuration["FrontendBaseUrl"] ?? "http://localhost:5173/poll"));
 
 // ✅ Redis Cache
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";

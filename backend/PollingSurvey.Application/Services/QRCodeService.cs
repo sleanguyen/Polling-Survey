@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using PollingSurvey.Application.Interfaces;
 using QRCoder;
 
@@ -8,10 +7,9 @@ public class QRCodeService : IQRCodeService
 {
     private readonly string _frontendBaseUrl;
 
-    public QRCodeService(IConfiguration configuration)
+    public QRCodeService(string frontendBaseUrl)
     {
-        _frontendBaseUrl = configuration["FrontendBaseUrl"]
-            ?? "http://localhost:5173/poll";
+        _frontendBaseUrl = frontendBaseUrl;
     }
 
     public byte[] GeneratePollQRCode(string code)
