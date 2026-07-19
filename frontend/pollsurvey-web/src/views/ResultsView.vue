@@ -52,11 +52,13 @@
               <button
                 v-if="store.currentResults.status === 'open'"
                 class="btn btn-outline close-btn"
+                :disabled="closing"
                 @click="handleClose"
-              >Close poll</button>
+              >{{ closing ? 'Đang đóng…' : 'Close poll' }}</button>
             </div>
           </div>
           <h1 class="page-title">{{ store.currentResults.title }}</h1>
+          <p v-if="closeError" class="close-error">{{ closeError }}</p>
         </div>
 
         <!-- For each question in the poll -->
@@ -171,15 +173,21 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { usePollStore } from '@/stores/pollStore.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import VoteChart from '@/components/VoteChart.vue'
 import { connectToPoll, disconnect, onEvent, offEvent } from '@/services/signalr.js'
 
-const route = useRoute()
-const store = usePollStore()
-const code  = route.params.code
+const route  = useRoute()
+const router = useRouter()
+const store  = usePollStore()
+const auth   = useAuthStore()
+const code   = route.params.code
+
+const closing    = ref(false)
+const closeError = ref('')
 
 function sortedOptions(qr) {
   return [...(qr.options ?? [])].sort((a, b) => b.voteCount - a.voteCount)
@@ -195,7 +203,35 @@ function starDisplay(avg) {
   return '★'.repeat(rounded) + '☆'.repeat(5 - rounded)
 }
 
-function handleClose() { store.close(code) }
+/**
+ * Backend requires [Authorize] on PATCH /polls/{code}/close.
+ * Previously this just fired store.close(code) with no try/catch —
+ * a 401 (not logged in / expired token) rejected silently and the
+ * button appeared to do nothing.
+ */
+async function handleClose() {
+  closeError.value = ''
+
+  if (!auth.isLoggedIn) {
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+
+  closing.value = true
+  try {
+    await store.close(code)
+  } catch (e) {
+    if (e.response?.status === 401) {
+      // Token invalid/expired — clear it and send them to log in again
+      auth.logout()
+      router.push({ path: '/login', query: { redirect: route.fullPath } })
+    } else {
+      closeError.value = e.response?.data?.message || 'Không thể đóng poll. Vui lòng thử lại.'
+    }
+  } finally {
+    closing.value = false
+  }
+}
 
 // SignalR handlers
 function handleResultUpdate(data) { store.applyLiveResultUpdate(data) }
@@ -228,6 +264,8 @@ onUnmounted(() => {
 .header-actions { display:flex; gap:.5rem; }
 .close-btn { font-size:.82rem; padding:.4rem .9rem; color:var(--color-danger); border-color:rgba(185,28,28,.25); }
 .close-btn:hover { background:var(--color-danger-bg); border-color:var(--color-danger); }
+.close-btn:disabled { opacity:.6; cursor:not-allowed; }
+.close-error { font-size:.82rem; color:var(--color-danger); margin-top:.5rem; }
 .analytics-btn { display:inline-flex; align-items:center; gap:.4rem; font-size:.82rem; padding:.4rem .9rem; }
 
 .question-block { margin-bottom:2rem; }
