@@ -27,6 +27,9 @@ if (builder.Environment.IsDevelopment())
         options.UseSqlServer(
             builder.Configuration.GetConnectionString("DefaultConnection")));
 }
+else if (builder.Environment.IsEnvironment("Testing"))
+{
+}
 else
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
