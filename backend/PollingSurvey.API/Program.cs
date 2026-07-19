@@ -116,13 +116,24 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // CORS Policy for Frontend Access
-builder.Services.AddCors(options =>
+//BACKUP;
+/*builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod();
+    });
+});*/
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("https://polling-survey-testnew.vercel.app")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
