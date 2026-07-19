@@ -84,6 +84,7 @@ import {
   LineElement, Title, Tooltip, Legend, Filler
 } from 'chart.js'
 import axios from 'axios'
+import { getPollResults } from '@/api/pollApi.js'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
@@ -112,7 +113,7 @@ onMounted(async () => {
   try {
     if (USE_MOCK_ANALYTICS) {
       // Fetch real results to get actual vote counts and option names
-      const { data: results } = await axios.get(`/api/polls/${code}/results`)
+      const results = await getPollResults(code)
       analytics.value = buildAnalyticsFromResults(results)
     } else {
       const { data } = await axios.get(`/api/polls/${code}/analytics`)
