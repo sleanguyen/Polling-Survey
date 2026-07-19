@@ -2,16 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PollingSurvey.Infrastructure.Data;
+
 #nullable disable
 
-namespace PollingSurvey.API.Migrations
+namespace PollingSurvey.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260623042726_InitialCreate")]
+    [Migration("20260718154427_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,25 +21,25 @@ namespace PollingSurvey.API.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.9")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("PollSurvey.API.Models.Option", b =>
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.Option", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Order")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("QuestionId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -47,31 +48,31 @@ namespace PollingSurvey.API.Migrations
                     b.ToTable("Options");
                 });
 
-            modelBuilder.Entity("PollSurvey.API.Models.Poll", b =>
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.Poll", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("ExpiresAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasDefaultValue("open");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -81,25 +82,25 @@ namespace PollingSurvey.API.Migrations
                     b.ToTable("Polls");
                 });
 
-            modelBuilder.Entity("PollSurvey.API.Models.Question", b =>
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.Question", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Order")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("PollId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -108,30 +109,72 @@ namespace PollingSurvey.API.Migrations
                     b.ToTable("Questions");
                 });
 
-            modelBuilder.Entity("PollSurvey.API.Models.Vote", b =>
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.User", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now() at time zone 'utc'");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("User");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.Vote", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("OpenTextValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<Guid?>("OptionId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("QuestionId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int?>("RatingValue")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("VotedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("VoterToken")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -143,9 +186,9 @@ namespace PollingSurvey.API.Migrations
                     b.ToTable("Votes");
                 });
 
-            modelBuilder.Entity("PollSurvey.API.Models.Option", b =>
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.Option", b =>
                 {
-                    b.HasOne("PollSurvey.API.Models.Question", "Question")
+                    b.HasOne("PollingSurvey.Domain.Entities.Question", "Question")
                         .WithMany("Options")
                         .HasForeignKey("QuestionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -154,9 +197,9 @@ namespace PollingSurvey.API.Migrations
                     b.Navigation("Question");
                 });
 
-            modelBuilder.Entity("PollSurvey.API.Models.Question", b =>
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.Question", b =>
                 {
-                    b.HasOne("PollSurvey.API.Models.Poll", "Poll")
+                    b.HasOne("PollingSurvey.Domain.Entities.Poll", "Poll")
                         .WithMany("Questions")
                         .HasForeignKey("PollId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -165,14 +208,14 @@ namespace PollingSurvey.API.Migrations
                     b.Navigation("Poll");
                 });
 
-            modelBuilder.Entity("PollSurvey.API.Models.Vote", b =>
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.Vote", b =>
                 {
-                    b.HasOne("PollSurvey.API.Models.Option", "Option")
+                    b.HasOne("PollingSurvey.Domain.Entities.Option", "Option")
                         .WithMany()
                         .HasForeignKey("OptionId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("PollSurvey.API.Models.Question", "Question")
+                    b.HasOne("PollingSurvey.Domain.Entities.Question", "Question")
                         .WithMany("Votes")
                         .HasForeignKey("QuestionId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -183,12 +226,12 @@ namespace PollingSurvey.API.Migrations
                     b.Navigation("Question");
                 });
 
-            modelBuilder.Entity("PollSurvey.API.Models.Poll", b =>
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.Poll", b =>
                 {
                     b.Navigation("Questions");
                 });
 
-            modelBuilder.Entity("PollSurvey.API.Models.Question", b =>
+            modelBuilder.Entity("PollingSurvey.Domain.Entities.Question", b =>
                 {
                     b.Navigation("Options");
 

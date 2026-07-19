@@ -5,12 +5,16 @@ namespace PollingSurvey.Application.Services;
 
 public class QRCodeService : IQRCodeService
 {
-    // ✅ Localhost only for now, as requested
-    private const string FrontendBaseUrl = "http://localhost:5173/poll";
+    private readonly string _frontendBaseUrl;
+
+    public QRCodeService(string frontendBaseUrl)
+    {
+        _frontendBaseUrl = frontendBaseUrl;
+    }
 
     public byte[] GeneratePollQRCode(string code)
     {
-        var pollUrl = $"{FrontendBaseUrl}/{code}";
+        var pollUrl = $"{_frontendBaseUrl}/{code}";
 
         using var qrGenerator = new QRCodeGenerator();
         using var qrCodeData = qrGenerator.CreateQrCode(pollUrl, QRCodeGenerator.ECCLevel.Q);
