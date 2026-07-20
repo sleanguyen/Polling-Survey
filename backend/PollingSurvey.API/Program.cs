@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -75,10 +76,8 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddScoped<IPollRepository, PollRepository>();
 builder.Services.AddScoped<IPollNotifier, SignalRPollNotifier>();
 builder.Services.AddScoped<IPollService, PollService>();
-builder.Services.AddScoped<IQRCodeService>(sp =>
-    new QRCodeService(builder.Configuration["FrontendBaseUrl"] ?? "http://localhost:5173/poll"));
 
-// ✅ Redis Cache
+// Redis Cache
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 builder.Services.AddSingleton<IConnectionMultiplexer>(
     ConnectionMultiplexer.Connect(redisConnectionString + ",abortConnect=false"));
@@ -87,6 +86,10 @@ builder.Services.AddScoped<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+builder.Services.Configure<QrCodeSettings>(
+    builder.Configuration.GetSection("QrCodeSettings"));
+builder.Services.AddScoped<IQRCodeService, QRCodeService>();
 
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
@@ -119,22 +122,14 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// CORS Policy for Frontend Access
-//BACKUP;
-/*builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-});*/
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("https://polling-survey-testnew.vercel.app")
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "http://192.168.68.177:5173",
+                "https://polling-survey-testnew.vercel.app")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
