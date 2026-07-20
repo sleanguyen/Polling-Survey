@@ -1,18 +1,5 @@
 import * as signalR from '@microsoft/signalr'
 
-/**
- * Connected to PollHub.cs (backend/PollingSurvey.API/Hubs/PollHub.cs)
- *
- * Hub methods we call:
- *   - JoinPoll(code)   → joins a SignalR group named by poll code
- *   - LeavePoll(code)  → leaves that group
- *
- * Server → client events:
- *   - "ReceivePollUpdate" → fired after every successful vote.
- *     Payload = the FULL PollResultResponse object (not a delta),
- *     so the client should just replace its local results wholesale.
- */
-
 let connection = null
 const listeners = {}
 
@@ -23,14 +10,15 @@ function emit(event, data) {
 export async function connectToPoll(pollCode) {
   if (connection) await connection.stop()
 
+  const hubUrl = import.meta.env.VITE_API_BASE_URL
+    ? `${import.meta.env.VITE_API_BASE_URL}/pollHub`
+    : '/pollHub'
+
   connection = new signalR.HubConnectionBuilder()
-    .withUrl('/pollHub')
+    .withUrl(hubUrl)
     .withAutomaticReconnect([0, 1000, 3000, 5000])
     .configureLogging(signalR.LogLevel.Warning)
     .build()
-
-  // Backend broadcasts the full updated results after each vote
-  connection.on('ReceivePollUpdate', (data) => emit('ReceivePollUpdate', data))
 
   connection.onreconnecting(() => emit('ConnectionState', { state: 'reconnecting' }))
   connection.onreconnected(() => {

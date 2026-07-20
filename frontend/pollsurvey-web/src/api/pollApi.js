@@ -1,9 +1,5 @@
 import axios from 'axios'
 
-/**
- * Trong môi trường dev: Vite proxy sẽ chuyển hướng từ /api → http://localhost:5139/api (hoặc cổng .NET của bạn)
- * Trong môi trường production: Sử dụng biến môi trường VITE_API_BASE_URL
- */
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL}/api`
   : '/api'
