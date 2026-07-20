@@ -71,6 +71,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<User>()
             .Property(u => u.CreatedAt)
-            .HasDefaultValueSql("GETUTCDATE()");
+            .HasDefaultValueSql(
+                Database.IsNpgsql() ? "now() at time zone 'utc'" : "GETUTCDATE()");
     }
 }

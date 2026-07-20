@@ -10,12 +10,19 @@ function emit(event, data) {
 export async function connectToPoll(pollCode) {
   if (connection) await connection.stop()
 
+<<<<<<< HEAD
   const hubUrl = import.meta.env.VITE_API_BASE_URL
     ? `${import.meta.env.VITE_API_BASE_URL}/pollHub`
     : '/pollHub'
 
   connection = new signalR.HubConnectionBuilder()
     .withUrl(hubUrl)
+=======
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://polling-survey.onrender.com'
+
+    connection = new signalR.HubConnectionBuilder()
+    .withUrl(`${API_BASE_URL}/pollHub`)
+>>>>>>> c78855786d3123df6cc5528e1dae4aef1a3e87a3
     .withAutomaticReconnect([0, 1000, 3000, 5000])
     .configureLogging(signalR.LogLevel.Warning)
     .build()

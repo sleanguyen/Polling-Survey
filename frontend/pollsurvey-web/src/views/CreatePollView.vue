@@ -24,7 +24,7 @@
               :class="['type-btn', { active: questionType === t.value }]"
               @click="questionType = t.value"
             >
-              <span class="type-icon">{{ t.icon }}</span>
+              <span class="type-icon" v-html="t.icon"></span>
               <span class="type-label">{{ t.label }}</span>
             </button>
           </div>
@@ -62,8 +62,8 @@
         <div v-if="questionType === 'yes_no'" class="field">
           <label class="label">Options</label>
           <div class="yn-preview">
-            <span class="yn-pill yes">👍 Yes</span>
-            <span class="yn-pill no">👎 No</span>
+            <span class="yn-pill yes">Yes</span>
+            <span class="yn-pill no">No</span>
           </div>
         </div>
 
@@ -78,7 +78,9 @@
         <!-- Open text note -->
         <div v-if="questionType === 'open_text'" class="field">
           <div class="info-box">
-            <span>💬</span>
+            <svg class="info-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 3.5h12v7H6.5L3.5 13v-2.5H2v-7z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            </svg>
             <p>Respondents will type a free-text answer. Responses are stored but not voted on.</p>
           </div>
         </div>
@@ -117,7 +119,7 @@
           <div class="share-row">
             <p class="share-link">{{ shareUrl() }}</p>
             <button class="btn btn-outline copy-btn" @click="copyLink">
-              {{ copied ? '✓ Copied!' : 'Copy link' }}
+              {{ copied ? 'Copied!' : 'Copy link' }}
             </button>
           </div>
 
@@ -173,11 +175,18 @@ const qrUrl        = computed(() =>
   createdPoll.value ? getQrCodeUrl(createdPoll.value.code) : ''
 )
 
+const icon = {
+  list: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2.5" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 4.75h6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><rect x="2" y="11" width="4.5" height="4.5" rx="1" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 13.25h6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  thumb: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M6 8v7H3.5A1.5 1.5 0 0 1 2 13.5v-4A1.5 1.5 0 0 1 3.5 8H6zm0 0l3-6a2 2 0 0 1 2 2v3h3a1.5 1.5 0 0 1 1.4 2.05l-1.8 4.5A1.5 1.5 0 0 1 12.2 15H8a2 2 0 0 1-2-2V8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  star: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1.5l2.3 4.9 5.2.6-3.8 3.6 1 5.2L9 13.2 4.3 15.8l1-5.2L1.5 7l5.2-.6L9 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+  chat: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 3.5h14v8H7.5L4 15v-3.5H2v-8z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>'
+}
+
 const questionTypes = [
-  { value: 'multiple_choice', icon: '☑️', label: 'Multiple choice' },
-  { value: 'yes_no',          icon: '👍', label: 'Yes / No' },
-  { value: 'rating',          icon: '⭐', label: 'Rating 1–5' },
-  { value: 'open_text',       icon: '💬', label: 'Open text' }
+  { value: 'multiple_choice', icon: icon.list,  label: 'Multiple choice' },
+  { value: 'yes_no',          icon: icon.thumb, label: 'Yes / No' },
+  { value: 'rating',          icon: icon.star,  label: 'Rating 1–5' },
+  { value: 'open_text',       icon: icon.chat,  label: 'Open text' }
 ]
 
 const shareUrl = () => createdPoll.value
@@ -263,7 +272,8 @@ function computeExpiry(val) {
 }
 .type-btn:hover   { border-color:var(--color-accent); background:rgba(107,14,30,.04); }
 .type-btn.active  { border-color:var(--color-accent); background:rgba(107,14,30,.07); }
-.type-icon  { font-size:1.25rem; line-height:1; }
+.type-icon  { display:flex; line-height:1; color:var(--color-text-soft); }
+.type-btn.active .type-icon { color:var(--color-accent); }
 .type-label { font-size:.72rem; font-weight:600; color:var(--color-text-soft); text-align:center; }
 
 .options-wrap { display:flex; flex-direction:column; gap:.55rem; }
@@ -305,6 +315,7 @@ function computeExpiry(val) {
   border-radius:var(--radius-sm); padding:.85rem 1rem;
   font-size:.88rem; color:var(--color-text-soft); line-height:1.5;
 }
+.info-icon { flex-shrink:0; margin-top:.15rem; color:var(--color-accent); }
 
 .select-input { cursor:pointer; }
 .form-footer  { margin-top:.5rem; }

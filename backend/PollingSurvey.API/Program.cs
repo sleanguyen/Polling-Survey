@@ -1,6 +1,7 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -21,14 +22,21 @@ using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
-if (!builder.Environment.IsEnvironment("Testing"))
+if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseSqlServer(
             builder.Configuration.GetConnectionString("DefaultConnection")));
 }
-
+else if (builder.Environment.IsEnvironment("Testing"))
+{
+}
+else
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(
+            builder.Configuration.GetConnectionString("DefaultConnection")));
+}
 
 builder.Services
     .AddControllers()
@@ -38,11 +46,8 @@ builder.Services
     });
 
 builder.Services.AddEndpointsApiExplorer();
-
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
-
 builder.Services.AddSignalR();
-
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -68,16 +73,14 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-
 builder.Services.AddScoped<IPollRepository, PollRepository>();
 builder.Services.AddScoped<IPollNotifier, SignalRPollNotifier>();
 builder.Services.AddScoped<IPollService, PollService>();
-builder.Services.AddScoped<IQRCodeService, QRCodeService>();
 
 // Redis Cache
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(redisConnectionString));
+    ConnectionMultiplexer.Connect(redisConnectionString + ",abortConnect=false"));
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -86,9 +89,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.Configure<QrCodeSettings>(
     builder.Configuration.GetSection("QrCodeSettings"));
+builder.Services.AddScoped<IQRCodeService, QRCodeService>();
+
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
-
 builder.Services.AddScoped<IJwtService, JwtService>();
 
 var jwtSettings = builder.Configuration
@@ -118,18 +122,19 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://192.168.68.177:5173")
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "http://192.168.68.177:5173",
+                "https://polling-survey-testnew.vercel.app")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
-
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -153,7 +158,6 @@ builder.Services.AddRateLimiter(options =>
         });
 });
 
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
@@ -163,15 +167,10 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 }
 
 app.UseCors("AllowFrontend");
-
 app.UseRateLimiter();
-
 app.UseAuthentication();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.MapHub<PollHub>("/pollHub");
 
 app.Run();

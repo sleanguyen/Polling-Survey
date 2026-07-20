@@ -10,99 +10,87 @@ const http = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
-// ── 📊 Polls ──────────────────────────────────────────────────────────────────
+// ── Auth token ─────────────────────────────────────────────────────────────
+
+export function setAuthToken(token) {
+  if (token) {
+    http.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    localStorage.setItem('authToken', token)
+  } else {
+    delete http.defaults.headers.common['Authorization']
+    localStorage.removeItem('authToken')
+  }
+}
+
+export function restoreAuthToken() {
+  const token = localStorage.getItem('authToken')
+  if (token) setAuthToken(token)
+  return token
+}
+
+// ── Auth endpoints ─────────────────────────────────────────────────────────
 
 /**
- * POST /api/polls
+ * POST /api/auth/register
+ * Body: RegisterRequest { username, email, password }
+ * Returns: RegisterResponse { id, username, email, createdAt }
  */
+export async function register(payload) {
+  const { data } = await http.post('/auth/register', {
+    username: payload.username,
+    email:    payload.email,
+    password: payload.password
+  })
+  return data
+}
+
+/**
+ * POST /api/auth/login
+ * Body: LoginRequest { usernameOrEmail, password }
+ * Returns: LoginResponse { Token, Username, Email, ExpiresAt }
+ */
+export async function login(payload) {
+  const { data } = await http.post('/auth/login', {
+    usernameOrEmail: payload.usernameOrEmail,
+    password:        payload.password
+  })
+  return data
+}
+
+// ── Polls ──────────────────────────────────────────────────────────────────
+
 export async function createPoll(payload) {
   const { data } = await http.post('/polls', payload)
   return data
 }
 
-/**
- * GET /api/polls/{code}
- */
 export async function getPoll(code) {
   const { data } = await http.get(`/polls/${code}`)
   return data
 }
 
-/**
- * GET /api/polls/{code}/results
- */
 export async function getPollResults(code) {
   const { data } = await http.get(`/polls/${code}/results`)
   return data
 }
 
-// ── 🗳️ Votes ──────────────────────────────────────────────────────────────────
+export function getQrCodeUrl(code) {
+  const base = import.meta.env.VITE_API_BASE_URL
+    ? `${import.meta.env.VITE_API_BASE_URL}/api`
+    : '/api'
+  return `${base}/polls/${code}/qrcode`
+}
 
-/**
- * POST /api/polls/{code}/vote
- */
+// ── Votes ──────────────────────────────────────────────────────────────────
+
 export async function submitVote(code, payload) {
   const { data } = await http.post(`/polls/${code}/vote`, payload)
   return data
 }
 
-// ── 👑 Creator ────────────────────────────────────────────────────────────────
+// ── Creator ────────────────────────────────────────────────────────────────
 
-/**
- * PATCH /api/polls/{code}/close
- */
 export async function closePoll(code) {
   const { data } = await http.patch(`/polls/${code}/close`)
   return data
-}
-
-// ── 🔐 Authentication ───────────────────────────────────────────────────────
-
-/**
- * POST /api/auth/login
- */
-export async function login(credentials) {
-  const { data } = await http.post('/auth/login', credentials)
-  return data
-}
-
-/**
- * POST /api/auth/register
- */
-export async function register(credentials) {
-  const { data } = await http.post('/auth/register', credentials)
-  return data
-}
-
-/**
- * Lưu token vào LocalStorage và đính kèm vào header của mọi request
- */
-export function setAuthToken(token) {
-  if (token) {
-    http.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    localStorage.setItem('poll_token', token)
-  } else {
-    delete http.defaults.headers.common['Authorization']
-    localStorage.removeItem('poll_token')
-  }
-}
-
-/**
- * Khôi phục lại token từ LocalStorage khi tải lại trang (F5)
- */
-export function restoreAuthToken() {
-  const token = localStorage.getItem('poll_token')
-  if (token) {
-    http.defaults.headers.common['Authorization'] = `Bearer ${token}`
-  }
-  return token
-}
-
-// ── 📷 QR Code (Giải quyết lỗi hiển thị QR trong CreatePollView.vue) ─────────
-
-/**
- * Lấy link ảnh QR Code trực tiếp từ Backend
- */
-export function getQrCodeUrl(code) {
-  return `${BASE_URL}/polls/${code}/qrcode`
 }

@@ -30,13 +30,21 @@
 
         <!-- Expiry countdown -->
         <div v-if="store.currentPoll.expiresAt && store.currentPoll.status === 'open'" class="expiry-bar">
-          <span>⏳</span>
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M7 3.5V7l2.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
           <span>Closes {{ expiryLabel }}</span>
         </div>
 
         <!-- CLOSED -->
         <div v-if="store.currentPoll.status === 'closed'" class="notice-card closed-notice">
-          <div class="notice-icon">🔒</div>
+          <div class="notice-icon">
+            <svg width="26" height="26" viewBox="0 0 20 20" fill="none">
+              <rect x="4" y="9" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M6.5 9V6.5a3.5 3.5 0 0 1 7 0V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
           <p class="notice-title">Đã kết thúc</p>
           <p class="notice-sub">This poll is now closed and no longer accepting votes.</p>
           <RouterLink :to="`/results/${code}`" class="btn btn-primary" style="margin-top:1.25rem">
@@ -84,7 +92,6 @@
                          { selected: selectedOptionId === opt.id }]"
                 @click="selectedOptionId = opt.id"
               >
-                <span class="yn-emoji">{{ opt.text === 'Yes' ? '👍' : '👎' }}</span>
                 <span>{{ opt.text }}</span>
               </button>
             </div>
@@ -244,13 +251,12 @@ async function submitVoteHandler() {
 /* yes_no */
 .yn-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:.75rem; }
 .yn-btn {
-  display:flex; flex-direction:column; align-items:center; gap:.5rem;
-  padding:1.5rem 1rem; border-radius:var(--radius-md);
-  font-family:var(--font-body); font-size:1rem; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  padding:1.4rem 1rem; border-radius:var(--radius-md);
+  font-family:var(--font-body); font-size:1.05rem; font-weight:700;
   cursor:pointer; border:2px solid var(--color-border); background:var(--color-bg);
   transition:all var(--transition);
 }
-.yn-emoji { font-size:2rem; }
 .yes-btn:hover, .yes-btn.selected { border-color:#166534; background:#dcfce7; color:#166534; }
 .no-btn:hover,  .no-btn.selected  { border-color:#b91c1c; background:#fee2e2; color:#b91c1c; }
 
